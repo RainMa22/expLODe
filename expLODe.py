@@ -2,7 +2,7 @@ import bpy
 import shutil
 import os
 import json
-
+import subprocess
 
 # loads attempts to find blender and use it for later scripts
 config : dict = {}
@@ -32,3 +32,21 @@ if blender_command is None or blender_command == "":
     print("Please configure `expLODe.blenderCmd` in config.json!")
     print("Exiting...")
     exit()
+
+print("Blender found, checking version")
+
+v_string=""
+v_ver=""
+v_major=-1
+v_minor=-1
+v_patch=-1
+with subprocess.Popen((blender_command + " --version").split(" "), stdout=subprocess.PIPE).stdout as proc_out:
+    v_string = proc_out.readline().decode()
+    v_ver = v_string.split(" ")[1]
+    v_major,v_minor,v_patch = (int(x) for x in v_ver.split("."))
+
+print(v_major,v_minor,v_patch, sep=".")
+if(v_major != 4 or v_minor < 2):
+    print(f"invalid version {v_ver}! Blender >= 4.2, < 5.0.0 expected!")
+    
+print("blender version satisfied")
