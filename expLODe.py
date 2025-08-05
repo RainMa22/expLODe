@@ -1,5 +1,6 @@
 import bpy
 import sys
+import argparse
 import shutil
 import os
 import json
@@ -11,6 +12,7 @@ __config : dict = {}
 def load_config():
     global __config
     parent=os.path.dirname(__file__)
+    parent=os.path.abspath(parent)
     if(not os.path.exists(parent+os.sep+"config.json")):
         shutil.copyfile(parent+os.sep+"config.default.json",
                         parent+os.sep+"config.json")
@@ -66,12 +68,36 @@ def check_version():
     print("blender version satisfied")
 
 def parse_args():
-    pass
-
+    parser = argparse.ArgumentParser(prog="expLODe", 
+                                     usage="-i (file).fbx [-o (out folder)]",
+                                     description="a Python3 LOD script using blender")
+    parser.add_argument('-i', '--inFile')
+    parser.add_argument('-o', '--outFolder')
+    args = parser.parse_args()
+    inFile:str = args.inFile
+    outFolder:str = args.outFolder
+    if(inFile is None):
+        parser.print_usage()
+        exit(1)
+    else:
+        inFile = inFile if args.inFile.lower().endswith(".fbx") else (args.inFile + ".fbx") 
+    if(not os.path.exists(inFile)):
+        print(f"in file {args.inFile} does not exist!")
+        exit(1)
+    elif(not os.path.isfile(inFile)):
+        print(f"in file {args.inFile} is not a file!")
+        exit(2)
+    elif(outFolder is None):
+        outFolder=os.path.dirname(args.inFile)
+        outFolder = os.path.abspath(outFolder)
+    print(f"using out folder {outFolder}")
+    return inFile, outFolder
+        
 def main():
     load_config()
     check_version()
-    parse_args()
+    inFile, outFolder = parse_args()
+    print(inFile, outFolder)
 
 if __name__ == "__main__":
     main()
