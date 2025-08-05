@@ -10,13 +10,19 @@ __config : dict = {}
 
 def load_config():
     global __config
-    if(not os.path.exists("config.json")):
-        shutil.copyfile("config.default.json","config.json")
+    parent=os.path.dirname(__file__)
+    if(not os.path.exists(parent+os.sep+"config.json")):
+        shutil.copyfile(parent+os.sep+"config.default.json",
+                        parent+os.sep+"config.json")
 
-    with open("config.json", "r") as file:
+    with open(parent+os.sep+"config.json", "r") as file:
         __config = json.loads(file.read())
 
     blender_command = __config.get("expLODe.blenderCmd")
+
+    if("blender" in sys.argv[0].lower()):
+        print(f"Using provided argument ${sys.argv[0]} as blender command")
+        blender_command = sys.argv[0]
     if(blender_command is None or blender_command == ""):
         print("Blender path not defined! Attempting to find automatically...")
         blenderPath = shutil.which("blender")
@@ -27,7 +33,7 @@ def load_config():
 
     __config["expLODe.blenderCmd"] = blender_command if blender_command is not None else ""
 
-    with open("config.json", "w") as file:
+    with open(parent+os.sep+"config.json", "w") as file:
         file.write(json.dumps(__config))
 
 def get_config():
@@ -59,9 +65,13 @@ def check_version():
         
     print("blender version satisfied")
 
+def parse_args():
+    pass
+
 def main():
     load_config()
     check_version()
+    parse_args()
 
 if __name__ == "__main__":
     main()
