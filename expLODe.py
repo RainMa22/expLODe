@@ -110,18 +110,12 @@ def main():
                           stderr=subprocess.STDOUT,
                           stdout=None) as proc:
         proc_in = proc.stdin
-        proc_in.write(bytearray("import os, sys" +
-                      os.linesep, encoding="utf-8"))
-        proc_in.write(bytearray(
-            f"sys.path.append(r'{os.path.abspath(".")}')" + os.linesep, encoding="utf-8"))
-        proc_in.write(bytearray("from features import *" +
-                      os.linesep, encoding="utf-8"))
-        proc_in.write(bytearray("newScene()" + os.linesep, encoding="utf-8"))
-        proc_in.write(
-            bytearray(f"importFBX(r'{inFile}')" + os.linesep, encoding="utf-8"))
-        proc_in.write(bytearray(
-            f"exportFBX(r'{outFolder+os.sep+"out.fbx"}')"+os.linesep, encoding="utf-8"))
-        proc_in.write(bytearray("quit()" + os.linesep, encoding="utf-8"))
+        with open(os.path.abspath(os.path.dirname(__file__)) + os.sep + "script.py") as file:
+            proc_in.write(
+                file.read().format(inFile=inFile, outFolder=outFolder, os=os).encode()
+            )
+            # print(file.read().format(inFile=inFile, outFolder=outFolder, os=os))
+
         proc_in.flush()
         input()
         proc_in.close()
