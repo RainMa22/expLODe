@@ -3,7 +3,7 @@
 <hr>
 
 ### v0 feature
-- [ ] Blender 4.4 support
+- [x] Blender 4.2.0+ support
 - [ ] FBX import (y = up, z+ = forward)
 - [ ] FBX export (y = up, z+ = forward)
 - [ ] Smart UV Unwrap (island = 0.1, deg=66?)
