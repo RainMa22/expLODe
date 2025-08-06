@@ -8,11 +8,11 @@ from features import *
 inFile = r"{inFile}"
 outFolder = r"{outFolder}"
 
-new_scene_as_name("fbxOG")
-switch_to_scene("fbxOG")
+new_scene("fbxOG")
+switch_scene("fbxOG")
 importFBX(f"{inFile}")
 
-remove_scene("Scene")
+# remove_scene("Scene")
 select_all()
 uv_unwrap(get_selected())
 

@@ -4,7 +4,7 @@ import random
 from copy import copy
 import re
 
-def new_scene_as_name(scene_name = None):
+def new_scene(scene_name = None):
     id = scene_name if scene_name is not None else str(random.randbytes(8))
     bpy.ops.scene.new(type='EMPTY')
     bpy.data.scenes[-1].name = str(id)
@@ -53,7 +53,7 @@ def dup_and_rename_suffix(prev_suffix="", new_suffix=None):
 def remove_scene(scene_name):
     return bpy.data.scenes.remove(bpy.data.scenes[scene_name])
 
-def switch_to_scene(scene_name):
+def switch_scene(scene_name):
     bpy.context.window.scene=bpy.data.scenes[str(scene_name)]
 
 def importFBX(filepath):
@@ -118,3 +118,4 @@ def lvl_one_lod_to_all():
     
 def lvl_two_lod_to_all():
     lvl_two_lod(bpy.context.scene.objects)
+
