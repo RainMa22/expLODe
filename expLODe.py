@@ -76,9 +76,11 @@ def parse_args():
                                      description="a Python3 LOD script using blender")
     parser.add_argument('-i', '--inFile')
     parser.add_argument('-o', '--outFolder')
+    parser.add_argument('-w', '--workflowScript')
     args = parser.parse_args()
     inFile: str = args.inFile
     outFolder: str = args.outFolder
+    workflowScript: str = args.workflowScript
     if (inFile is None):
         parser.print_usage()
         exit(1)
@@ -94,23 +96,32 @@ def parse_args():
     elif (outFolder is None):
         outFolder = os.path.dirname(inFile)
 
+    if(workflowScript is None):
+        workflowScript = os.path.abspath(os.path.dirname(__file__)) + os.sep + "script.py"
+        print(f"using default workflow file: {workflowScript}")
+    elif(os.path.exists(workflowScript)):
+        print(f"workflow script \"{workflowScript}\" does not exists!")
+        exit(1)
+    elif(os.path.isfile(workflowScript)):
+        print(f"workflow script \"{workflowScript}\" is not a file!")
+        exit(2)
     inFile = os.path.abspath(inFile)
     outFolder = os.path.abspath(outFolder)
     print(f"using out folder \"{outFolder}\"")
-    return inFile, outFolder
+    return inFile, outFolder, workflowScript
 
 
 def main():
     load_config()
     check_version()
-    inFile, outFolder = parse_args()
-    print(inFile, outFolder)
+    inFile, outFolder, workflowScript= parse_args()
+    # print(inFile, outFolder)
     with subprocess.Popen((get_config().get("expLODe.blenderCmd") + " -b --python-console").split(" "),
                           stdin=subprocess.PIPE,
                           stderr=subprocess.STDOUT,
                           stdout=None) as proc:
         proc_in = proc.stdin
-        with open(os.path.abspath(os.path.dirname(__file__)) + os.sep + "script.py") as file:
+        with open(workflowScript) as file:
             proc_in.write(
                 file.read().format(inFile=inFile, outFolder=outFolder, os=os).encode()
             )

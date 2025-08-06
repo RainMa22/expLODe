@@ -62,7 +62,7 @@ def importFBX(filepath):
 def exportFBX(filepath):
     bpy.ops.export_scene.fbx(filepath=filepath,axis_forward='Z', axis_up='Y',apply_scale_options='FBX_SCALE_UNITS')
 
-def uv_unwrap(target:bpy.types.SceneObjects=[].copy()):
+def uv_unwrap(target:bpy.types.SceneObjects=bpy.context.selected_objects):
     deselect_all()
     for obj in target:
         bpy.context.view_layer.objects.active=obj
@@ -73,25 +73,44 @@ def uv_unwrap(target:bpy.types.SceneObjects=[].copy()):
         bpy.ops.object.mode_set(mode='OBJECT')
         obj.select_set(False)
 
-def lvl_one_lod(target:bpy.types.SceneObjects = [].copy()):
+def lvl_one_lod(target:bpy.types.SceneObjects = get_selected()):
+    planar_decimate(angle_limit=10.0/180*math.pi, target=target)
+
+def lvl_two_lod(target: bpy.types.SceneObjects = get_selected()):
+    unsubdiv(10, target)
+
+def unsubdiv(iterations: int, target:bpy.types.SceneObjects = get_selected()):
+    fx_name = f"unsubdiv_{iterations}"
     for obj in target:
         if obj.type != 'MESH':
             continue
-        modifier:bpy.types.DecimateModifier = obj.modifiers.new(name="lod1.decimate",type="DECIMATE")
-        modifier.angle_limit = (10.0/180*math.pi)
-        modifier.decimate_type = "DISSOLVE" # planar
+        modifier:bpy.types.DecimateModifier = obj.modifiers.new(name=fx_name,type="DECIMATE")
+        modifier.decimate_type="UNSUBDIV"
+        modifier.iterations=iterations
         bpy.context.view_layer.objects.active=obj
-        bpy.ops.object.modifier_apply(modifier="lod1.decimate")
+        bpy.ops.object.modifier_apply(modifier=fx_name)
 
-def lvl_two_lod(target: bpy.types.SceneObjects = [].copy()):
-     for obj in target:
+def planar_decimate(angle_limit = 10.0/180*math.pi, target = get_selected()):
+    fx_name = f"planar_{int(angle_limit/math.pi*180)}"
+    for obj in target:
         if obj.type != 'MESH':
             continue
-        modifier:bpy.types.DecimateModifier = obj.modifiers.new(name="lod2.decimate",type="DECIMATE")
-        modifier.decimate_type="UNSUBDIV"
-        modifier.iterations=10
+        modifier:bpy.types.DecimateModifier = obj.modifiers.new(name=fx_name,type="DECIMATE")
+        modifier.angle_limit = angle_limit
+        modifier.decimate_type = "DISSOLVE" # planar
         bpy.context.view_layer.objects.active=obj
-        bpy.ops.object.modifier_apply(modifier="lod2.decimate")
+        bpy.ops.object.modifier_apply(modifier=fx_name)
+
+def collapse(ratio: float = 0.95, target = get_selected()):
+    fx_name = f"collapse_{ratio:.02f}"
+    for obj in target:
+        if obj.type != 'MESH':
+            continue
+        modifier:bpy.types.DecimateModifier = obj.modifiers.new(name=fx_name,type="DECIMATE")
+        modifier.ratio = ratio
+        modifier.decimate_type = "COLLAPSE" # planar
+        bpy.context.view_layer.objects.active=obj
+        bpy.ops.object.modifier_apply(modifier=fx_name)
 
 def lvl_one_lod_to_all():
     lvl_one_lod(bpy.context.scene.objects)
