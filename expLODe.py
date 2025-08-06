@@ -74,7 +74,7 @@ def parse_args():
     parser = argparse.ArgumentParser(prog="expLODe",
                                      usage="-i (file).fbx [-o (out folder)]",
                                      description="a Python3 LOD script using blender")
-    parser.add_argument('-i', '--inFile')
+    parser.add_argument('-i', '--inFile', required=True)
     parser.add_argument('-o', '--outFolder')
     parser.add_argument('-w', '--workflowScript')
     args = parser.parse_args()
