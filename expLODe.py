@@ -1,4 +1,4 @@
-import bpy
+# import bpy
 import sys
 import argparse
 import shutil

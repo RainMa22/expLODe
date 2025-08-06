@@ -3,19 +3,23 @@ sys.path.append(os.path.abspath("."))
 
 from features import *
 
+inFile = r"{inFile}"
+outFolder = r"{outFolder}"
+
 new_scene_as_name("fbxOG")
 switch_to_scene("fbxOG")
-importFBX(r"{inFile}")
+importFBX(f"{inFile}")
 
 remove_scene("Scene")
-copy_scene_to_name("fbxLOD1")
-copy_scene_to_name("fbxLOD2")
+select_all()
+add_suffix("OG")
+dup_and_rename_suffix(prev_suffix="OG", new_suffix="LOD1")
+select(suffix="LOD1")
+lvl_one_lod(get_selected())
 
-switch_to_scene("fbxLOD1")
-lvl_one_lod_to_all()
-exportFBX(r"{outFolder}{os.sep}LOD1.fbx")
-
-switch_to_scene("fbxLOD2")
-lvl_two_lod_to_all()
-exportFBX(r"{outFolder}{os.sep}LOD2.fbx")
+select(suffix="OG")
+dup_and_rename_suffix(prev_suffix="OG", new_suffix="LOD2")
+select(suffix="LOD2")
+lvl_two_lod(get_selected())
+exportFBX(f"{outFolder}{os.sep}combined.fbx")
 
