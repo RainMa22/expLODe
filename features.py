@@ -62,6 +62,17 @@ def importFBX(filepath):
 def exportFBX(filepath):
     bpy.ops.export_scene.fbx(filepath=filepath,axis_forward='Z', axis_up='Y',apply_scale_options='FBX_SCALE_UNITS')
 
+def uv_unwrap(target:bpy.types.SceneObjects=[].copy()):
+    deselect_all()
+    for obj in target:
+        bpy.context.view_layer.objects.active=obj
+        obj.select_set(True)
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.uv.smart_project(island_margin=0.01)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        obj.select_set(False)
+
 def lvl_one_lod(target:bpy.types.SceneObjects = [].copy()):
     for obj in target:
         if obj.type != 'MESH':

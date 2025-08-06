@@ -12,6 +12,9 @@ importFBX(f"{inFile}")
 
 remove_scene("Scene")
 select_all()
+uv_unwrap(get_selected())
+
+select_all()
 add_suffix("OG")
 dup_and_rename_suffix(prev_suffix="OG", new_suffix="LOD1")
 select(suffix="LOD1")
