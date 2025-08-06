@@ -1,8 +1,8 @@
 import bpy
 import math
 import random
-from copy import copy
 import re
+
 
 def new_scene(scene_name = None):
     id = scene_name if scene_name is not None else str(random.randbytes(8))
@@ -10,8 +10,9 @@ def new_scene(scene_name = None):
     bpy.data.scenes[-1].name = str(id)
     return scene_name
 
-def copy_scene_to_name(scene_name = None):
+def copy_scene(src_scene, scene_name = None):
     id = scene_name if scene_name is not None else str(random.randbytes(8))
+    bpy.context.window.screen = bpy.data.scenes[src_scene]
     bpy.ops.scene.new(type='FULL_COPY')
     bpy.context.scene.name = str(id)
     return scene_name
@@ -39,16 +40,20 @@ def select(prefix="", suffix=""):
 
 def add_suffix(suffix=None):
     suffix = suffix if suffix is not None else f"copy{random.randint(0,255)}"
+    modified = []
     for obj in bpy.context.selected_objects:
         obj.name += suffix
-    return suffix
+        modified.append(obj)
+    return modified
 
 def dup_and_rename_suffix(prev_suffix="", new_suffix=None):
     new_suffix = new_suffix if new_suffix is not None else f"copy{random.randint(0,255)}"
     bpy.ops.object.duplicate()
+    changed = []
     for select_obj in bpy.context.selected_objects:
         select_obj.name = select_obj.name.replace(f"{prev_suffix}.001", f".{new_suffix}")
-    return bpy.context.selectable_objects
+        changed.append(select_obj)
+    return changed
 
 def remove_scene(scene_name):
     return bpy.data.scenes.remove(bpy.data.scenes[scene_name])
@@ -58,12 +63,23 @@ def switch_scene(scene_name):
 
 def importFBX(filepath):
     bpy.ops.import_scene.fbx(filepath=filepath,axis_forward='Z', axis_up='Y')
+    imported = [obj for obj in bpy.context.selectable_objects]
+    return imported
 
-def exportFBX(filepath):
-    bpy.ops.export_scene.fbx(filepath=filepath,axis_forward='Z', axis_up='Y',apply_scale_options='FBX_SCALE_UNITS')
+def exportFBX(filepath, target=None):
+    target = target if target is not None else bpy.context.scene.objects
+    deselect_all()
+    for obj in target:
+        obj.select_set(True)
+    bpy.ops.export_scene.fbx(filepath=filepath,
+                             axis_forward='Z', 
+                             axis_up='Y',
+                             use_selection=True,
+                             apply_scale_options='FBX_SCALE_UNITS')
 
 def uv_unwrap(target:bpy.types.SceneObjects=bpy.context.selected_objects):
     deselect_all()
+    changed = []
     for obj in target:
         bpy.context.view_layer.objects.active=obj
         obj.select_set(True)
@@ -72,15 +88,19 @@ def uv_unwrap(target:bpy.types.SceneObjects=bpy.context.selected_objects):
         bpy.ops.uv.smart_project(island_margin=0.01)
         bpy.ops.object.mode_set(mode='OBJECT')
         obj.select_set(False)
+        changed.append(obj)
+    return changed
 
-def lvl_one_lod(target:bpy.types.SceneObjects = get_selected()):
-    planar_decimate(angle_limit=10.0/180*math.pi, target=target)
+def lvl_one_lod(target:bpy.types.SceneObjects = None):
+    return planar_decimate(angle_limit=10.0/180*math.pi, target=target)
 
-def lvl_two_lod(target: bpy.types.SceneObjects = get_selected()):
-    unsubdiv(10, target)
+def lvl_two_lod(target: bpy.types.SceneObjects = None):
+    return unsubdiv(10, target)
 
-def unsubdiv(iterations: int, target:bpy.types.SceneObjects = get_selected()):
+def unsubdiv(iterations: int, target:bpy.types.SceneObjects = None):
+    target = target if target is not None else get_selected()
     fx_name = f"unsubdiv_{iterations}"
+    changed = []
     for obj in target:
         if obj.type != 'MESH':
             continue
@@ -89,9 +109,12 @@ def unsubdiv(iterations: int, target:bpy.types.SceneObjects = get_selected()):
         modifier.iterations=iterations
         bpy.context.view_layer.objects.active=obj
         bpy.ops.object.modifier_apply(modifier=fx_name)
+        changed.append(obj)
 
-def planar_decimate(angle_limit = 10.0/180*math.pi, target = get_selected()):
+def planar_decimate(angle_limit = 10.0/180*math.pi, target = None):
+    target = target if target is not None else get_selected()
     fx_name = f"planar_{int(angle_limit/math.pi*180)}"
+    changed = []
     for obj in target:
         if obj.type != 'MESH':
             continue
@@ -100,9 +123,14 @@ def planar_decimate(angle_limit = 10.0/180*math.pi, target = get_selected()):
         modifier.decimate_type = "DISSOLVE" # planar
         bpy.context.view_layer.objects.active=obj
         bpy.ops.object.modifier_apply(modifier=fx_name)
+        changed.append(obj)
+    return changed
 
-def collapse(ratio: float = 0.95, target = get_selected()):
+
+def collapse(ratio: float = 0.95, target = None):
+    target = target if target is not None else get_selected()
     fx_name = f"collapse_{ratio:.02f}"
+    changed = []
     for obj in target:
         if obj.type != 'MESH':
             continue
@@ -111,11 +139,12 @@ def collapse(ratio: float = 0.95, target = get_selected()):
         modifier.decimate_type = "COLLAPSE" # planar
         bpy.context.view_layer.objects.active=obj
         bpy.ops.object.modifier_apply(modifier=fx_name)
+        changed.append(obj)
+    return changed
 
 def lvl_one_lod_to_all():
-    lvl_one_lod(bpy.context.scene.objects)
+    return lvl_one_lod(bpy.context.scene.objects)
         
     
 def lvl_two_lod_to_all():
-    lvl_two_lod(bpy.context.scene.objects)
-
+    return lvl_two_lod(bpy.context.scene.objects)
