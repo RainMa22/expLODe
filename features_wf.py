@@ -1,9 +1,13 @@
+import os,sys
+# allow for import of features
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
 import math
-import re
 from sexp import sexp 
 from features import *
 
 def interp_workflow(env:dict, wf):
+    # print(env,wf, sep = "\n")
     def interp(wf):
         return interp_workflow(env,wf)
     match(wf):
@@ -12,25 +16,17 @@ def interp_workflow(env:dict, wf):
             newEnv = {}
             newEnv.update(env)
             newEnv[x] = interp_workflow(env, interp(y))
-            interp_workflow(newEnv, rest)
-        case ("add", x, y):
+            return interp_workflow(newEnv, rest)
+        case ("add" | "-", x, y):
             return interp(x) + interp(y)
-        case ("+", x, y):
-            return interp(x) + interp(y)
-        case ("sub", x,y):
-            return interp(x) - interp(y)
-        case ("-", x,y):
-            return interp(x) - interp(y)        
-        case ("multiply", x,y):
-            return interp(x) * interp(y)
-        case ("*", x,y):
-            return interp(x) * interp(y)        
-        case ("divide", x,y):
+        case ("sub" | "-", x,y):
+            return interp(x) - interp(y)     
+        case ("multiply" | "*", x,y):
+            return interp(x) * interp(y)      
+        case ("divide" | "/", x,y):
             return interp(x) / interp(y)
-        case ("/", x,y):
-            return interp(x) / interp(y)
-        case ("deg", degree):
-            return degree/180*math.pi
+        case ("deg->rad", degree):
+            return interp(degree)/180*math.pi
         case ("new-scene"):
             return ("Scene", new_scene())
         case ("new-scene", name):
@@ -62,11 +58,11 @@ def interp_workflow(env:dict, wf):
         case ("collapse", ratio, target):
             return tuple(collapse(interp(ratio), interp(target)))
         case (x):
-            print(x)
             return env.get(x) if x in env.keys() else x
         
 def interp_workflow0(wf0):
     return interp_workflow({}, sexp(wf0))
 
-if __name__ == "__main__":
-    print(sexp("(with (a 12) (divide a 4))"))
+assert(interp_workflow0("(with (a 12) (divide a 4))") == 3)
+assert(interp_workflow0("(with (a 12) (/ a 4))") == 3)
+assert(interp_workflow0("(with (b 4) (with (a 12) (/ a b)))") == 3)
