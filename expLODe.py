@@ -76,11 +76,11 @@ def parse_args():
                                      description="a Python3 LOD script using blender")
     parser.add_argument('-i', '--inFile', required=True)
     parser.add_argument('-o', '--outFolder')
-    parser.add_argument('-w', '--workflowScript')
+    parser.add_argument('-s', '--script')
     args = parser.parse_args()
     inFile: str = args.inFile
     outFolder: str = args.outFolder
-    workflowScript: str = args.workflowScript
+    script: str = args.script
     if (inFile is None):
         parser.print_usage()
         exit(1)
@@ -96,19 +96,19 @@ def parse_args():
     elif (outFolder is None):
         outFolder = os.path.dirname(inFile)
 
-    if(workflowScript is None):
-        workflowScript = os.path.abspath(os.path.dirname(__file__)) + os.sep + "script.py"
-        print(f"using default workflow file: {workflowScript}")
-    elif(os.path.exists(workflowScript)):
-        print(f"workflow script \"{workflowScript}\" does not exists!")
+    if(script is None):
+        script = os.path.abspath(os.path.dirname(__file__)) + os.sep + "script.py"
+        print(f"using default workflow file: {script}")
+    elif(os.path.exists(script)):
+        print(f"workflow script \"{script}\" does not exists!")
         exit(1)
-    elif(os.path.isfile(workflowScript)):
-        print(f"workflow script \"{workflowScript}\" is not a file!")
+    elif(os.path.isfile(script)):
+        print(f"workflow script \"{script}\" is not a file!")
         exit(2)
     inFile = os.path.abspath(inFile)
     outFolder = os.path.abspath(outFolder)
     print(f"using out folder \"{outFolder}\"")
-    return inFile, outFolder, workflowScript
+    return inFile, outFolder, script
 
 
 def main():

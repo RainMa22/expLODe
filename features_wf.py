@@ -1,9 +1,9 @@
-import bpy
 import math
-
+import re
+from sexp import sexp 
 from features import *
 
-def interp_workflow(env, wf):
+def interp_workflow(env:dict, wf):
     def interp(wf):
         return interp_workflow(env,wf)
     match(wf):
@@ -62,7 +62,11 @@ def interp_workflow(env, wf):
         case ("collapse", ratio, target):
             return tuple(collapse(interp(ratio), interp(target)))
         case (x):
-            return env[x]
+            print(x)
+            return env.get(x) if x in env.keys() else x
         
 def interp_workflow0(wf0):
-    return interp_workflow({}, tuple(wf0.split(" ")))
+    return interp_workflow({}, sexp(wf0))
+
+if __name__ == "__main__":
+    print(sexp("(with (a 12) (divide a 4))"))
