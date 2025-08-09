@@ -40,8 +40,11 @@ def sexp(s: str):
                     curr_word = []
             else:
                 curr_word.append(c)
+            # print(f"{i}[{c}]:",token_stack, curr_tokens, curr_word,sep = "\n")
         return tuple(curr_tokens)
-    return tokenize([char for char in s[1:-1]])
+    result = tokenize([char for char in s])[0]
+    # print(result)
+    return result
 
 
 assert (sexp("(with (a 12) (divide a 4))") ==
@@ -50,3 +53,5 @@ assert (sexp("(with (b 4) (with (a 12) (divide a b)))") ==
         ("with", ("b", 4),
         ("with", ("a", 12),
         ("divide", "a", "b"))))
+
+assert (sexp("(import FBX ./test.fbx)")) == ("import","FBX", "./test.fbx")

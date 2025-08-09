@@ -63,7 +63,7 @@ def switch_scene(scene_name):
 
 def importFBX(filepath):
     bpy.ops.import_scene.fbx(filepath=filepath,axis_forward='Z', axis_up='Y')
-    imported = [obj for obj in bpy.context.selectable_objects]
+    imported = [obj for obj in bpy.context.selected_objects]
     return imported
 
 def exportFBX(filepath, target=None):
@@ -76,6 +76,7 @@ def exportFBX(filepath, target=None):
                              axis_up='Y',
                              use_selection=True,
                              apply_scale_options='FBX_SCALE_UNITS')
+    return filepath
 
 def uv_unwrap(target:bpy.types.SceneObjects=bpy.context.selected_objects):
     deselect_all()

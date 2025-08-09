@@ -38,8 +38,8 @@ def interp_workflow(env:dict, wf):
         case ("import", "FBX", path):
             return tuple(importFBX(interp(path)))
         case ("export", "FBX", path):
-            return (exportFBX(path))
-        case ("export", "FBX", interp(path), interp(target)):
+            return (exportFBX(interp(path)))
+        case ("export", "FBX", path, target):
             return tuple(exportFBX(interp(path), interp(target)))
         case ("uv-unwrap", "ALL"):
             return tuple(uv_unwrap())
@@ -62,6 +62,38 @@ def interp_workflow(env:dict, wf):
         
 def interp_workflow0(wf0):
     return interp_workflow({}, sexp(wf0))
+
+def testLOD1():
+    folder = os.path.abspath(os.path.dirname(__file__))
+    test_fbx_file = os.sep.join([folder, "test.fbx"])
+    out_fbx_file = os.sep.join([folder, "testLOD1.fbx"])
+    workflow = f"""
+    (with (inFile {test_fbx_file})
+        (with (outFile {out_fbx_file}) 
+            (export FBX outFile
+                (planar (deg->rad 10)
+                    (import FBX inFile)))))""".replace("\n","")
+    interp_workflow0(workflow)
+    os.remove(out_fbx_file)
+    return True
+
+def testLOD2():
+    folder = os.path.abspath(os.path.dirname(__file__))
+    test_fbx_file = os.sep.join([folder, "test.fbx"])
+    out_fbx_file = os.sep.join([folder, "testLOD2.fbx"])
+    workflow = f"""
+    (with (inFile {test_fbx_file})
+        (with (outFile {out_fbx_file}) 
+            (export FBX outFile
+                (unsubdiv 10
+                    (import FBX inFile)))))""".replace("\n","")
+    interp_workflow0(workflow)
+    os.remove(out_fbx_file)
+    return True
+
+assert(testLOD1())
+assert(testLOD2())
+
 
 assert(interp_workflow0("(with (a 12) (divide a 4))") == 3)
 assert(interp_workflow0("(with (a 12) (/ a 4))") == 3)
