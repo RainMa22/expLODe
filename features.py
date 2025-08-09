@@ -110,6 +110,7 @@ def unsubdiv(iterations: int, target:bpy.types.SceneObjects = None):
         bpy.context.view_layer.objects.active=obj
         bpy.ops.object.modifier_apply(modifier=fx_name)
         changed.append(obj)
+    return changed
 
 def planar_decimate(angle_limit = 10.0/180*math.pi, target = None):
     target = target if target is not None else get_selected()
