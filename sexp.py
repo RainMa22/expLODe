@@ -3,7 +3,7 @@ class badSexpError(ValueError):
 
 
 def sexp(s: str):
-    s = s.replace("\r"," ").replace("\n"," ").strip()
+    s = s.replace("\t", " ").replace("\r"," ").replace("\n"," ").strip()
     # print(s)
     if (not s.startswith("(")) or not s.endswith(")"):
         raise badSexpError("needs to start with '(' and ends with ')'")
