@@ -1,0 +1,7 @@
+
+(with 
+    (og (import FBX inFile))
+    (with (LOD1 (planar (deg->rad 10) og))
+        (with (LOD2 (unsubdiv 10 og))
+            (export FBX outFile (+ og (+ LOD1 LOD2)))
+)))

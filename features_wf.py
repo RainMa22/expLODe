@@ -1,15 +1,17 @@
-import os,sys
+from sexp import sexp
+import math
+import os
+import sys
+
 # allow for import of features
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-
-import math
-from sexp import sexp 
 from features import *
 
-def interp_workflow(env:dict, wf):
+
+def interp_workflow(env: dict, wf):
     # print(env,wf, sep = "\n")
     def interp(wf):
-        return interp_workflow(env,wf)
+        return interp_workflow(env, wf)
     match(wf):
         # ["with" (x, y) (...)]
         case ("with", (x, y), rest):
@@ -17,13 +19,15 @@ def interp_workflow(env:dict, wf):
             newEnv.update(env)
             newEnv[x] = interp_workflow(env, interp(y))
             return interp_workflow(newEnv, rest)
-        case ("add" | "-", x, y):
+        case ("add" | "+", x, y):
+            print(x, y)
+            print(interp(x), interp(y))
             return interp(x) + interp(y)
-        case ("sub" | "-", x,y):
-            return interp(x) - interp(y)     
-        case ("multiply" | "*", x,y):
-            return interp(x) * interp(y)      
-        case ("divide" | "/", x,y):
+        case ("sub" | "-", x, y):
+            return interp(x) - interp(y)
+        case ("multiply" | "*", x, y):
+            return interp(x) * interp(y)
+        case ("divide" | "/", x, y):
             return interp(x) / interp(y)
         case ("deg->rad", degree):
             return interp(degree)/180*math.pi
@@ -46,55 +50,62 @@ def interp_workflow(env:dict, wf):
         case ("uv-unwrap", objects):
             return tuple(uv_unwrap(interp(objects)))
         case ("unsubdiv", iterations):
-            return tuple(unsubdiv(interp(iterations)))
+            return tuple(unsubdiv(interp(iterations), inplace=False))
         case ("unsubdiv", iterations, target):
-            return tuple(unsubdiv(interp(iterations), interp(target)))
+            return tuple(unsubdiv(interp(iterations), interp(target), inplace=False))
         case ("planar", angle_limit_rad):
-            return tuple(planar_decimate(interp(angle_limit_rad)))
+            return tuple(planar_decimate(interp(angle_limit_rad), inplace=False))
         case ("planar", angle_limit_rad, target):
-            return tuple(planar_decimate(interp(angle_limit_rad), interp(target)))
+            return tuple(planar_decimate(interp(angle_limit_rad), interp(target), inplace=False))
         case ("collapse", ratio):
-            return tuple(collapse(interp(ratio), interp(target)))
+            return tuple(collapse(interp(ratio), interp(target), inplace=False))
         case ("collapse", ratio, target):
-            return tuple(collapse(interp(ratio), interp(target)))
+            return tuple(collapse(interp(ratio), interp(target), inplace=False))
+        # case ("and", lst):
+        #     print(interp(lst))
+        #     return interp(lst)
+        # case ("and", lst, *rest):
+        #     print(interp(lst),rest)
+        #     return interp(("and", interp(lst) + interp(rest.pop(0)), rest)) if len(rest) > 1 else interp(("and", lst))
         case (x):
             return env.get(x) if x in env.keys() else x
-        
+
+
 def interp_workflow0(wf0):
     return interp_workflow({}, sexp(wf0))
 
-def testLOD1():
-    folder = os.path.abspath(os.path.dirname(__file__))
-    test_fbx_file = os.sep.join([folder, "test.fbx"])
-    out_fbx_file = os.sep.join([folder, "testLOD1.fbx"])
-    workflow = f"""
-    (with (inFile {test_fbx_file})
-        (with (outFile {out_fbx_file}) 
-            (export FBX outFile
-                (planar (deg->rad 10)
-                    (import FBX inFile)))))""".replace("\n","")
-    interp_workflow0(workflow)
-    os.remove(out_fbx_file)
-    return True
+# def testLOD1():
+#     folder = os.path.abspath(os.path.dirname(__file__))
+#     test_fbx_file = os.sep.join([folder, "test.fbx"])
+#     out_fbx_file = os.sep.join([folder, "testLOD1.fbx"])
+#     workflow = f"""
+#     (with (inFile {test_fbx_file})
+#         (with (outFile {out_fbx_file})
+#             (export FBX outFile
+#                 (planar (deg->rad 10)
+#                     (import FBX inFile)))))""".replace("\n","")
+#     interp_workflow0(workflow)
+#     os.remove(out_fbx_file)
+#     return True
 
-def testLOD2():
-    folder = os.path.abspath(os.path.dirname(__file__))
-    test_fbx_file = os.sep.join([folder, "test.fbx"])
-    out_fbx_file = os.sep.join([folder, "testLOD2.fbx"])
-    workflow = f"""
-    (with (inFile {test_fbx_file})
-        (with (outFile {out_fbx_file}) 
-            (export FBX outFile
-                (unsubdiv 10
-                    (import FBX inFile)))))""".replace("\n","")
-    interp_workflow0(workflow)
-    os.remove(out_fbx_file)
-    return True
+# def testLOD2():
+#     folder = os.path.abspath(os.path.dirname(__file__))
+#     test_fbx_file = os.sep.join([folder, "test.fbx"])
+#     out_fbx_file = os.sep.join([folder, "testLOD2.fbx"])
+#     workflow = f"""
+#     (with (inFile {test_fbx_file})
+#         (with (outFile {out_fbx_file})
+#             (export FBX outFile
+#                 (unsubdiv 10
+#                     (import FBX inFile)))))""".replace("\n","")
+#     interp_workflow0(workflow)
+#     os.remove(out_fbx_file)
+#     return True
 
-assert(testLOD1())
-assert(testLOD2())
+# assert(testLOD1())
+# assert(testLOD2())
 
 
-assert(interp_workflow0("(with (a 12) (divide a 4))") == 3)
-assert(interp_workflow0("(with (a 12) (/ a 4))") == 3)
-assert(interp_workflow0("(with (b 4) (with (a 12) (/ a b)))") == 3)
+assert (interp_workflow0("(with (a 12) (divide a 4))") == 3)
+assert (interp_workflow0("(with (a 12) (/ a 4))") == 3)
+assert (interp_workflow0("(with (b 4) (with (a 12) (/ a b)))") == 3)

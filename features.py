@@ -38,6 +38,14 @@ def get_selected():
 def select(prefix="", suffix=""):
     return select_regex(re.compile(f"^({prefix}).*({suffix})$",re.MULTILINE))
 
+def select_target(target):
+    deselect_all()
+    selected = []
+    for obj in target:
+        obj.select_set(True)
+        selected.append(obj)
+    return selected
+
 def add_suffix(suffix=None):
     suffix = suffix if suffix is not None else f"copy{random.randint(0,255)}"
     modified = []
@@ -98,9 +106,12 @@ def lvl_one_lod(target:bpy.types.SceneObjects = None):
 def lvl_two_lod(target: bpy.types.SceneObjects = None):
     return unsubdiv(10, target)
 
-def unsubdiv(iterations: int, target:bpy.types.SceneObjects = None):
+def unsubdiv(iterations: int, target:bpy.types.SceneObjects = None, inplace = True):
     target = target if target is not None else get_selected()
     fx_name = f"unsubdiv_{iterations}"
+    if(not inplace):
+        select_target(target)
+        target = dup_and_rename_suffix(new_suffix=fx_name)
     changed = []
     for obj in target:
         if obj.type != 'MESH':
@@ -113,9 +124,12 @@ def unsubdiv(iterations: int, target:bpy.types.SceneObjects = None):
         changed.append(obj)
     return changed
 
-def planar_decimate(angle_limit = 10.0/180*math.pi, target = None):
+def planar_decimate(angle_limit = 10.0/180*math.pi, target = None, inplace=True):
     target = target if target is not None else get_selected()
     fx_name = f"planar_{int(angle_limit/math.pi*180)}"
+    if(not inplace):
+        select_target(target)
+        target = dup_and_rename_suffix(new_suffix=fx_name)
     changed = []
     for obj in target:
         if obj.type != 'MESH':
@@ -129,9 +143,12 @@ def planar_decimate(angle_limit = 10.0/180*math.pi, target = None):
     return changed
 
 
-def collapse(ratio: float = 0.95, target = None):
+def collapse(ratio: float = 0.95, target = None, inplace=True):
     target = target if target is not None else get_selected()
     fx_name = f"collapse_{ratio:.02f}"
+    if(not inplace):
+        select_target(target)
+        target = dup_and_rename_suffix(new_suffix=fx_name)
     changed = []
     for obj in target:
         if obj.type != 'MESH':
