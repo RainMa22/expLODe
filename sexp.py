@@ -53,5 +53,8 @@ assert (sexp("(with (b 4) (with (a 12) (divide a b)))") ==
         ("with", ("b", 4),
         ("with", ("a", 12),
         ("divide", "a", "b"))))
-
+assert (sexp("(with (b 4)\r\n\t(with (a 12) (divide a b)))") ==
+        ("with", ("b", 4),
+        ("with", ("a", 12),
+        ("divide", "a", "b"))))
 assert (sexp("(import FBX ./test.fbx)")) == ("import","FBX", "./test.fbx")
