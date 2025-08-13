@@ -35,6 +35,18 @@ def interp_workflow(env: dict, wf):
             return interp(degree)/180*math.pi
         case ("equal?"|"=", a, b):
             return interp(a) == interp(b)
+        case ("less?"|"<", a, b):
+            return interp(a) < interp(b)
+        case ("greater?"|">", a, b):
+            return interp(a) > interp(b)
+        case ("leq?"|"<=", a, b):
+            return interp(a) <= interp(b)
+        case ("geq?"|">=", a, b):
+            return interp(a) >= interp(b)
+        case ("or", a, b):
+            return interp(a) or interp(b)
+        case ("and", a, b):
+            return interp(a) and interp(b)
         case ("if", cond, a, b):
             if(interp(cond)):
                 return interp(a)
