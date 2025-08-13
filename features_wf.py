@@ -1,4 +1,3 @@
-from sexp import sexp
 import math
 import os
 import sys
@@ -6,6 +5,7 @@ import sys
 # allow for import of features
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from features import *
+from sexp import sexp
 
 
 def interp_workflow(env: dict, wf):
@@ -13,24 +13,43 @@ def interp_workflow(env: dict, wf):
     def interp(wf):
         return interp_workflow(env, wf)
     match(wf):
-        # ["with" (x, y) (...)]
+        # (with (x, y) (...))
         case ("with", (x, y), rest):
             newEnv = {}
             newEnv.update(env)
             newEnv[x] = interp_workflow(env, interp(y))
             return interp_workflow(newEnv, rest)
+        # (add x y) | (+ x y)
         case ("add" | "+", x, y):
-            print(x, y)
             print(interp(x), interp(y))
             return interp(x) + interp(y)
+        # (sub x y) | (- x y)
         case ("sub" | "-", x, y):
             return interp(x) - interp(y)
+        # (multiply x y) | (* x y)
         case ("multiply" | "*", x, y):
             return interp(x) * interp(y)
         case ("divide" | "/", x, y):
             return interp(x) / interp(y)
         case ("deg->rad", degree):
             return interp(degree)/180*math.pi
+        case ("equal?"|"=", a, b):
+            return interp(a) == interp(b)
+        case ("if", cond, a, b):
+            if(interp(cond)):
+                return interp(a)
+            else: 
+                return(interp(b))
+        case ("not", x): 
+            return not interp(x)
+        case ("first", arr):
+            return interp(("aref", 0, interp(arr)))
+        case ("rest", arr):
+            return interp(arr)[1:]
+        case ("aref", index, arr):
+            return interp(interp(arr)[interp(index)])
+        case ("empty?", arr):
+            return len(interp(arr)) == 0
         case ("new-scene"):
             return ("Scene", new_scene())
         case ("new-scene", name):
@@ -58,16 +77,10 @@ def interp_workflow(env: dict, wf):
         case ("planar", angle_limit_rad, target):
             return tuple(planar_decimate(interp(angle_limit_rad), interp(target), inplace=False))
         case ("collapse", ratio):
-            return tuple(collapse(interp(ratio), interp(target), inplace=False))
+            return tuple(collapse(interp(ratio), interp(target), inplace=False)) 
         case ("collapse", ratio, target):
             return tuple(collapse(interp(ratio), interp(target), inplace=False))
-        # case ("and", lst):
-        #     print(interp(lst))
-        #     return interp(lst)
-        # case ("and", lst, *rest):
-        #     print(interp(lst),rest)
-        #     return interp(("and", interp(lst) + interp(rest.pop(0)), rest)) if len(rest) > 1 else interp(("and", lst))
-        case (x):
+        case x:
             return env.get(x) if x in env.keys() else x
 
 
@@ -109,3 +122,9 @@ def interp_workflow0(wf0):
 assert (interp_workflow0("(with (a 12) (divide a 4))") == 3)
 assert (interp_workflow0("(with (a 12) (/ a 4))") == 3)
 assert (interp_workflow0("(with (b 4) (with (a 12) (/ a b)))") == 3)
+assert (interp_workflow0("(with (b 4) (with (a 12) (if (= a 12) (/ a b) -1)))") == 3)
+assert (interp_workflow0("(with (b 4) (with (a 12) (if (not (= a 12)) (/ a b) -1)))") == -1)
+assert (interp_workflow0("(with (b 4) (with (a 12) (if (= a 121) (/ a b) -1)))") == -1)
+assert (interp_workflow0("(first (b 4))") == 'b')
+assert (interp_workflow0("(rest (b 4))") == (4,))
+assert (interp_workflow0("(empty? (rest (rest (b 4))))"))
