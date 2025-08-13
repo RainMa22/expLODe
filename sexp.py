@@ -5,10 +5,6 @@ class badSexpError(ValueError):
 def sexp(s: str):
     s = s.replace("\t", " ").replace("\r"," ").replace("\n"," ").strip()
     # print(s)
-    if (not s.startswith("(")) or not s.endswith(")"):
-        raise badSexpError("needs to start with '(' and ends with ')'")
-    # parse word into number if appropriate
-
     def parse_word(word: str):
         try:
             word = float(word)
@@ -18,6 +14,11 @@ def sexp(s: str):
             pass
         return word
     # tokenize
+    if (not s.startswith("(")) or not s.endswith(")"):
+        return parse_word(s)
+    # parse word into number if appropriate
+
+
 
     def tokenize(s: list[str]):
         token_stack = []  # added and removed from the back

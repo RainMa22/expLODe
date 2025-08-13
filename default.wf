@@ -1,4 +1,3 @@
-
 (with 
     (og (import FBX inFile))
     (with (LOD1 (planar (deg->rad 10) og))

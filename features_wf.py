@@ -128,3 +128,30 @@ assert (interp_workflow0("(with (b 4) (with (a 12) (if (= a 121) (/ a b) -1)))")
 assert (interp_workflow0("(first (b 4))") == 'b')
 assert (interp_workflow0("(rest (b 4))") == (4,))
 assert (interp_workflow0("(empty? (rest (rest (b 4))))"))
+
+def repl():
+    print()
+    print("Welcome to Workflow REPL...")
+    print("type \"exit\" to leave...\n")
+    env = {}
+    inp = input()
+    def interp_with_define(wf):
+        match(wf):
+            case ("define"|"def", x ,y):
+                result = y
+                if(y != x):
+                    result = interp_workflow(env, y)
+                env[x] = result
+                return result
+            case ("undefine"|"undef", x):
+                return env.pop(x)
+            case x:
+                return interp_workflow(env, x)
+    
+    while (inp != "exit"):
+        if(inp != ""):
+            print(interp_with_define(sexp(inp)))
+        inp = input()
+
+if __name__ == "__main__":
+    repl()
