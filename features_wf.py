@@ -40,7 +40,7 @@ def interp_workflow(env: dict, wf):
                 return interp_workflow(newEnv, body)
         # (add x y) | (+ x y)
         case ("add" | "+", x, y):
-            print(interp(x), interp(y))
+            # print(interp(x), interp(y))
             return interp(x) + interp(y)
         # (sub x y) | (- x y)
         case ("sub" | "-", x, y):
@@ -120,7 +120,7 @@ def interp_workflow(env: dict, wf):
 
 
 def interp_workflow0(wf0):
-    return interp_workflow({}, sexp(wf0))
+    return interp_workflow({}, sexp(wf0).content())
 
 # def testLOD1():
 #     folder = os.path.abspath(os.path.dirname(__file__))
@@ -169,7 +169,7 @@ assert (interp_workflow({},(("funV", ('a', 'b'),{},('/','a','b')),12,3)) == 4)
 # print(interp_workflow0("(with (div (a b) (/ a b)) (div 12 3))"))
 assert (interp_workflow0("(with (div (a b) (/ a b)) (div 12 3))") == 4)
 # print (interp_workflow0("(with (mod (a b) (if (>= a b) (mod (- a b) b) a)) (mod 12 4)"))
-assert (interp_workflow0("(with (mod (a b) (if (>= a b) (mod (- a b) b) a)) (mod 12 4)") == 0)
+assert (interp_workflow0("(with (mod (a b) (if (>= a b) (mod (- a b) b) a)) (mod 12 4))") == 0)
 
 def repl():
     print()
@@ -192,7 +192,7 @@ def repl():
     
     while (inp != "exit"):
         if(inp != ""):
-            print(interp_with_define(sexp(inp)))
+            print(repr(interp_with_define(sexp(inp))))
         inp = input()
 
 if __name__ == "__main__":
