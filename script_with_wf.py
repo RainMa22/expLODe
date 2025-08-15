@@ -10,5 +10,5 @@ with open(r"{wf_file}") as wf:
     text = wf.read()
 
 # print(text)
-interp_workflow0(r"(with (inFile {inFile}) (with (outFile {outFile})"+text+"))")
+interp_workflow0(r"(with (inFile (make-string {inFile})) (with (outFile (make-string {outFile}))"+text+"))")
  

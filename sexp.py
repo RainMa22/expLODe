@@ -11,7 +11,7 @@ class make_symbol():
     def __str__(self):
         return f"{self.name}"
     def __repr__(self):
-        return str(self)
+        return f"(make-symbol {self.name})"
 
 class make_string(str):
     def __new__(self, name:str):
@@ -24,7 +24,6 @@ class make_string(str):
         return super().__repr__()[1:-1].join(["\"","\""])
     
 
-
 def parse_word(word: str):
     try:
         word = float(word)
@@ -32,10 +31,11 @@ def parse_word(word: str):
             word = int(word)
     except ValueError:
         pass
-    return word if type(word) is not str else make_symbol(word)
+    return word if ((type(word) is not str) or (type(word) is make_string)) else make_symbol(word)
 
 def find_string(s: list[str], end = "\""):
     escape: bool = False
+    success: bool = False
     chars = []
     offset = 0
     while(offset < len(s)):
@@ -71,21 +71,23 @@ def find_string(s: list[str], end = "\""):
             if c == "\\":
                 escape = True
             elif c == end:
+                success = True
                 break
             else:
                 chars.append(c)
         offset += 1
+    if(not success):
+        return -1, ""
     return offset, make_string("".join(chars))
 
-# print(find_string(""))
-assert(find_string("") == (0, ""))
-assert(find_string("a") == (1, "a"))
-assert(find_string(r"\"") == (2, "\""))
-assert(find_string(r"\'") == (2, "\'"))
-assert(find_string(r"\b") == (2, "\b"))
-assert(find_string(r"\\") == (2, "\\"))
-assert(find_string(r"\x4e") == (4, "\x4e"))
-assert(find_string(r"\000") == (4, "\000"))
+assert(find_string("") == (-1, ""))
+assert(find_string("a") == (-1, ""))
+assert(find_string(r'\""') == (2, "\""))
+assert(find_string(r'\'"') == (2, "\'"))
+assert(find_string(r'\b"') == (2, "\b"))
+assert(find_string(r'\\"') == (2, "\\"))
+assert(find_string(r"""\x4e" """) == (4, "\x4e"))
+assert(find_string(r"""\000" """) == (4, "\000"))
 try:
     find_string(r"\ ")
     assert(False)
@@ -114,6 +116,10 @@ class sexp(tuple):
 
         # tokenize
         if (not s.startswith("(")) or not s.endswith(")"):
+            if(s.startswith("\"")): 
+                result = find_string(s[1:])
+                if(result != -1): 
+                    return (find_string(s[1:])[1],)
             # parse word into number if appropriate
             return (parse_word(s),)            
 
@@ -140,12 +146,15 @@ class sexp(tuple):
                             curr_tokens.append(parse_word("".join(curr_word)))
                             curr_word = []
                     case "\"":
-                        if (len(curr_word) != 0):
-                            curr_tokens.append(parse_word("".join(curr_word)))
-                            curr_word = []
                         offset,string = find_string(s[i+1:])
-                        i += offset + 1 # skip closing quotation as well
-                        curr_tokens.append(string)
+                        if(offset != -1):
+                            if (len(curr_word) != 0):
+                                curr_tokens.append(parse_word("".join(curr_word)))
+                                curr_word = []
+                            i += offset + 1 # skip closing quotation as well
+                            curr_tokens.append(string)
+                        else: 
+                            curr_word.append(c)
                     case _:
                         curr_word.append(c)
                 # print(f"{i}[{c}]:",token_stack, curr_tokens, curr_word,sep = "\n")

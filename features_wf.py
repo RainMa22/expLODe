@@ -5,7 +5,7 @@ import sys
 # allow for import of features
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from features import *
-from sexp import sexp
+from sexp import sexp,make_symbol,make_string
 
 
 def interp_workflow(env: dict, wf):
@@ -81,14 +81,18 @@ def interp_workflow(env: dict, wf):
             return interp(interp(arr)[interp(index)])
         case ("empty?", arr):
             return len(interp(arr)) == 0
-        case ("new-scene"):
-            return ("Scene", new_scene())
-        case ("new-scene", name):
-            return ("Scene", new_scene(interp(name)))
-        case ("copy-scene", ("Scene", src_scene)):
-            return ("Scene", copy_scene(interp(src_scene)))
-        case ("copy-scene", ("Scene", src_scene), scene_name):
-            return ("Scene", copy_scene(interp(src_scene), interp(env, scene_name)))
+        case ("make-string", sym) if type(interp(sym)) is make_symbol:
+            return make_string(interp(sym).name)
+        case ("make-symbol", *rest):
+            return make_symbol(" ".join(map(lambda item: item.name if type(item) is make_symbol else str(item), rest)))
+        # case ("new-scene"):
+        #     return ("Scene", new_scene())
+        # case ("new-scene", name):
+        #     return ("Scene", new_scene(interp(name)))
+        # case ("copy-scene", ("Scene", src_scene)):
+        #     return ("Scene", copy_scene(interp(src_scene)))
+        # case ("copy-scene", ("Scene", src_scene), scene_name):
+        #     return ("Scene", copy_scene(interp(src_scene), interp(env, scene_name)))
         case ("import", "FBX", path):
             return tuple(importFBX(interp(path)))
         case ("export", "FBX", path):
@@ -122,36 +126,36 @@ def interp_workflow(env: dict, wf):
 def interp_workflow0(wf0):
     return interp_workflow({}, sexp(wf0).content())
 
-# def testLOD1():
-#     folder = os.path.abspath(os.path.dirname(__file__))
-#     test_fbx_file = os.sep.join([folder, "test.fbx"])
-#     out_fbx_file = os.sep.join([folder, "testLOD1.fbx"])
-#     workflow = f"""
-#     (with (inFile {test_fbx_file})
-#         (with (outFile {out_fbx_file})
-#             (export FBX outFile
-#                 (planar (deg->rad 10)
-#                     (import FBX inFile)))))""".replace("\n","")
-#     interp_workflow0(workflow)
-#     os.remove(out_fbx_file)
-#     return True
+def testLOD1():
+    folder = os.path.abspath(os.path.dirname(__file__))
+    test_fbx_file = os.sep.join([folder, "test.fbx"])
+    out_fbx_file = os.sep.join([folder, "testLOD1.fbx"])
+    workflow = f"""
+    (with (inFile (make-string {test_fbx_file}))
+        (with (outFile (make-string {out_fbx_file}))
+            (export FBX outFile
+                (planar (deg->rad 10)
+                    (import FBX inFile)))))""".replace("\n","")
+    interp_workflow0(workflow)
+    os.remove(out_fbx_file)
+    return True
 
-# def testLOD2():
-#     folder = os.path.abspath(os.path.dirname(__file__))
-#     test_fbx_file = os.sep.join([folder, "test.fbx"])
-#     out_fbx_file = os.sep.join([folder, "testLOD2.fbx"])
-#     workflow = f"""
-#     (with (inFile {test_fbx_file})
-#         (with (outFile {out_fbx_file})
-#             (export FBX outFile
-#                 (unsubdiv 10
-#                     (import FBX inFile)))))""".replace("\n","")
-#     interp_workflow0(workflow)
-#     os.remove(out_fbx_file)
-#     return True
+def testLOD2():
+    folder = os.path.abspath(os.path.dirname(__file__))
+    test_fbx_file = os.sep.join([folder, "test.fbx"])
+    out_fbx_file = os.sep.join([folder, "testLOD2.fbx"])
+    workflow = f"""
+    (with (inFile (make-string {test_fbx_file}))
+        (with (outFile (make-string {out_fbx_file}))
+            (export FBX outFile
+                (unsubdiv 10
+                    (import FBX inFile)))))""".replace("\n","")
+    interp_workflow0(workflow)
+    os.remove(out_fbx_file)
+    return True
 
-# assert(testLOD1())
-# assert(testLOD2())
+assert(testLOD1())
+assert(testLOD2())
 
 
 assert (interp_workflow0("(with (a 12) (divide a 4))") == 3)
