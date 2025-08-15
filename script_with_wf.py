@@ -11,3 +11,4 @@ with open(r"{wf_file}") as wf:
 
 # print(text)
 interp_workflow0(r"(with (inFile {inFile}) (with (outFile {outFile})"+text+"))")
+ 

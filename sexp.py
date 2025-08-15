@@ -42,11 +42,10 @@ def sexp(s: str):
             else:
                 curr_word.append(c)
             # print(f"{i}[{c}]:",token_stack, curr_tokens, curr_word,sep = "\n")
-        return tuple(curr_tokens)
-    result = tokenize([char for char in s])[0]
+        return tuple(curr_tokens)  
+    result = tokenize([char for char in s])
     # print(result)
-    return result
-
+    return result if len(result) > 1 else result[0]
 
 assert (sexp("(with (a 12) (divide a 4))") ==
         ("with", ("a", 12), ("divide", "a", 4)))

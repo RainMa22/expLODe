@@ -13,12 +13,31 @@ def interp_workflow(env: dict, wf):
     def interp(wf):
         return interp_workflow(env, wf)
     match(wf):
+        case ("funV", *_):
+            return wf
         # (with (x, y) (...))
         case ("with", (x, y), rest):
             newEnv = {}
             newEnv.update(env)
-            newEnv[x] = interp_workflow(env, interp(y))
+            newEnv[interp(x)] = interp_workflow(env, interp(y))
             return interp_workflow(newEnv, rest)
+        case ("with", (name, fargs, body), rest):
+            newEnv = {}
+            newEnv.update(env)
+            name_u = interp(name)
+            fun = ("funV", fargs, newEnv, body)
+            newEnv[name_u] = fun
+            # ("funV", fargs, env, body)
+            return interp(("with", (name_u, fun), rest))
+        case (("funV", fargs, fenv, body), *args):
+            if(len(fargs) != len(args)):
+                return ("Error", f"function needs {len(fargs)} argument(s) but gotten {len(args)} argument(s)!")
+            else:
+                newEnv = {}
+                newEnv.update(fenv)
+                for i, farg in enumerate(fargs):
+                    newEnv[farg] = interp(args[i])
+                return interp_workflow(newEnv, body)
         # (add x y) | (+ x y)
         case ("add" | "+", x, y):
             print(interp(x), interp(y))
@@ -92,6 +111,10 @@ def interp_workflow(env: dict, wf):
             return tuple(collapse(interp(ratio), interp(target), inplace=False)) 
         case ("collapse", ratio, target):
             return tuple(collapse(interp(ratio), interp(target), inplace=False))
+        case (x, *rest):
+            return interp((env.get(x), *rest)) if x in env.keys() else (x, *rest)
+        case (x,):
+            return interp(env.get(x)) if x in env.keys() else (x,)
         case x:
             return env.get(x) if x in env.keys() else x
 
@@ -138,8 +161,15 @@ assert (interp_workflow0("(with (b 4) (with (a 12) (if (= a 12) (/ a b) -1)))") 
 assert (interp_workflow0("(with (b 4) (with (a 12) (if (not (= a 12)) (/ a b) -1)))") == -1)
 assert (interp_workflow0("(with (b 4) (with (a 12) (if (= a 121) (/ a b) -1)))") == -1)
 assert (interp_workflow0("(first (b 4))") == 'b')
+# print (interp_workflow0("(rest (b 4))"))
 assert (interp_workflow0("(rest (b 4))") == (4,))
 assert (interp_workflow0("(empty? (rest (rest (b 4))))"))
+# print(interp_workflow({},(("funV", ('a', 'b'),{},('/','a','b')),12,3)))
+assert (interp_workflow({},(("funV", ('a', 'b'),{},('/','a','b')),12,3)) == 4)
+# print(interp_workflow0("(with (div (a b) (/ a b)) (div 12 3))"))
+assert (interp_workflow0("(with (div (a b) (/ a b)) (div 12 3))") == 4)
+# print (interp_workflow0("(with (mod (a b) (if (>= a b) (mod (- a b) b) a)) (mod 12 4)"))
+assert (interp_workflow0("(with (mod (a b) (if (>= a b) (mod (- a b) b) a)) (mod 12 4)") == 0)
 
 def repl():
     print()
