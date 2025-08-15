@@ -192,7 +192,7 @@ def repl():
     
     while (inp != "exit"):
         if(inp != ""):
-            print(repr(interp_with_define(sexp(inp))))
+            print(repr(interp_with_define(sexp(inp).content())))
         inp = input()
 
 if __name__ == "__main__":
