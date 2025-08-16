@@ -73,15 +73,15 @@ def check_version():
 def parse_args():
     parent = os.path.abspath(os.path.dirname(__file__))
     parser = argparse.ArgumentParser(prog="expLODe",
-                                     usage="-i (file).fbx [-o (out folder)]",
+                                     usage="-i (file1.fbx)[,(file2.fbx)] [-o (out folder)]",
                                      description="a Python3 LOD script using blender")
-    parser.add_argument('-i', '--inFile', required=True)
+    parser.add_argument('-i', '--inFiles', required=True)
     parser.add_argument('-o', '--outFolder')
     parser.add_argument('-s', '--script', default=os.path.join(parent, "script_with_wf.py"))
     parser.add_argument('--python',choices=[True,False], default=False)
     parser.add_argument('--wf',choices=[True,False], default=False)
     args = parser.parse_args()
-    inFile: str = args.inFile
+    inFiles: str = args.inFiles
     outFolder: str = args.outFolder
     outFile:str = ""
     wf_file:str = os.path.join(parent, "default.wf")
@@ -95,20 +95,18 @@ def parse_args():
     elif(args.script.lower().endswith(".wf")):
         wf_file = args.script
     
-    if (inFile is None):
+    if (inFiles is None):
         parser.print_usage()
         exit(1)
-    else:
-        inFile = inFile if args.inFile.lower().endswith(
-            ".fbx") else (args.inFile + ".fbx")
-    if (not os.path.exists(inFile)):
+
+    if (not os.path.exists(inFiles)):
         print(f"in file {args.inFile} does not exist!")
         exit(1)
-    elif (not os.path.isfile(inFile)):
+    elif (not os.path.isfile(inFiles)):
         print(f"in file {args.inFile} is not a file!")
         exit(2)
     elif (outFolder is None):
-        outFolder = os.path.dirname(inFile)
+        outFolder = os.path.dirname(inFiles)
 
     if(not os.path.exists(script)):
         print(f"workflow script \"{script}\" does not exists!")
@@ -116,11 +114,11 @@ def parse_args():
     elif(not os.path.isfile(script)):
         print(f"workflow script \"{script}\" is not a file!")
         exit(2)
-    inFile = os.path.abspath(inFile)
+    inFiles = os.path.abspath(inFiles)
     outFolder = os.path.abspath(outFolder)
-    outFile = os.path.join(outFolder, f"{os.path.basename(inFile)}.combined.fbx")
+    outFile = os.path.join(outFolder, f"{os.path.basename(inFiles)}.combined.fbx")
     print(f"using out folder \"{outFolder}\"")
-    return {"inFile": inFile, 
+    return {"inFile": inFiles, 
             "outFolder": outFolder, 
             "script": script,
             "wf_file": wf_file,
@@ -132,17 +130,25 @@ def main():
     check_version()
     args = parse_args()
     script = args["script"]
+    blender = get_config().get("expLODe.blenderCmd");
     # print(json.dumps(args,indent=4))
-    with subprocess.Popen((get_config().get("expLODe.blenderCmd") + " -b --python-console").split(" "),
+    with subprocess.Popen([blender, 
+                           "-b", 
+                           "--python-console"],
                           stdin=subprocess.PIPE,
                           stderr=subprocess.STDOUT,
                           stdout=None) as proc:
         proc_in = proc.stdin
+        for key,val in args.items():
+            proc_in.write(f"{key}={repr(val)}\n".encode())
+        proc_in.flush()
+
         with open(script) as file:
             text = file.read()
-            proc_in.write(
-                text.format_map(args).encode()
-            )
+            proc_in.write(text.encode())
+            # proc_in.write(
+            #     text.format_map(args).encode()
+            # )
         proc_in.flush()
         input()
         proc_in.close()
