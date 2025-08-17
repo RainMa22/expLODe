@@ -182,6 +182,7 @@ class sexp():
                             curr_tokens.append(parse_word("".join(curr_word)))
                             curr_word = []
                         if (s[off+1] != "("):
+                            off += 1
                             continue
                         offset, sub_sexp_tokens = tokenize(s[off + 1:])
                         # hacky, could be better...
