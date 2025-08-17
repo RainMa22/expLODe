@@ -8,10 +8,12 @@ from features import *
 from sexp import sexp,make_symbol,make_string
 
 
-def interp_workflow(env: dict, wf):
+def interp_workflow(env: dict, wf, interp_override=None):
     # print(env,wf, sep = "\n")
+    if(interp_override is None):
+        interp_override = interp_workflow
     def interp(wf):
-        return interp_workflow(env, wf)
+        return interp_override(env, wf, interp_override)
     match(wf):
         case ("eval", something):
             if(type(something) is make_symbol):
@@ -30,8 +32,8 @@ def interp_workflow(env: dict, wf):
         case ("with", (x, y), rest):
             newEnv = {}
             newEnv.update(env)
-            newEnv[interp(x)] = interp_workflow(env, interp(y))
-            return interp_workflow(newEnv, rest)
+            newEnv[interp(x)] = interp_override(env, interp(y), interp_override)
+            return interp_override(newEnv, rest, interp_override)
         case ("with", (name, fargs, body), rest):
             newEnv = {}
             newEnv.update(env)
@@ -50,7 +52,7 @@ def interp_workflow(env: dict, wf):
                 newEnv.update(fenv)
                 for i, farg in enumerate(fargs):
                     newEnv[farg] = interp(args[i])
-                return interp_workflow(newEnv, body)
+                return interp_override(newEnv, body, interp_override)
         # (add x y) | (+ x y)
         case ("add" | "+", x, y):
             # print(interp(x), interp(y))
@@ -83,7 +85,7 @@ def interp_workflow(env: dict, wf):
             if(interp(cond)):
                 return interp(a)
             else: 
-                return(interp(b))
+                return interp(b)
         case ("not", x): 
             return not interp(x)
         case ("first", arr):
@@ -201,12 +203,13 @@ def repl():
     try:
         print(">",end=" ")
         inp = input()
-        def interp_with_define(wf):
+        def interp_with_define(env, wf, override=None):
+            # print(env,wf, sep = "\n")
             match(wf):
                 case ("define"|"def", x ,y):
                     result = y
                     if(y != x):
-                        result = interp_workflow(env, y)
+                        result = interp_workflow(env, y, interp_with_define)
                     env[x] = result
                     return result
                 case ("undefine"|"undef", x):
@@ -214,11 +217,11 @@ def repl():
                 case ("exit" | ("exit",)):
                     raise EOFError()
                 case x:
-                    return interp_workflow(env, x)
+                    return interp_workflow(env, x, interp_with_define)
         
         while (1):
             if(inp != ""):
-                print(repr(interp_with_define(sexp(inp).content())))
+                print(repr(interp_with_define(env, sexp(inp).content())))
             print(">",end=" ")
             inp = input()
     except EOFError:
