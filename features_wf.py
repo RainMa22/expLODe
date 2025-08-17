@@ -13,9 +13,20 @@ def interp_workflow(env: dict, wf):
     def interp(wf):
         return interp_workflow(env, wf)
     match(wf):
+        case ("eval", something):
+            if(type(something) is make_symbol):
+                return interp(sexp(something.name).content())
+            elif(type(something) is sexp):
+                return interp(something.content())
+            else:
+                return interp(something)
         case ("funV", *_):
             return wf
         # (with (x, y) (...))
+        case ("lambda" | "λ", fargs, body):
+            newEnv = {}
+            newEnv.update(env)
+            return ("funV", fargs, newEnv, body)
         case ("with", (x, y), rest):
             newEnv = {}
             newEnv.update(env)
@@ -29,6 +40,8 @@ def interp_workflow(env: dict, wf):
             newEnv[name_u] = fun
             # ("funV", fargs, env, body)
             return interp(("with", (name_u, fun), rest))
+        case (("lambda", fargs, body), *args):
+            return interp((interp(("lambda", fargs, body)), *args))
         case (("funV", fargs, fenv, body), *args):
             if(len(fargs) != len(args)):
                 return ("Error", f"function needs {len(fargs)} argument(s) but gotten {len(args)} argument(s)!")
@@ -86,6 +99,10 @@ def interp_workflow(env: dict, wf):
             return make_string(result.name if result is make_symbol else str(result))
         case ("make-symbol", *rest):
             return make_symbol(" ".join(map(lambda item: item.name if type(item) is make_symbol else str(item), rest)))
+        case ("cons", item, arr):
+            return (interp(item),*arr)
+        case ("list", *items):
+            return tuple(map(items, lambda item: interp(item)))
         # case ("new-scene"):
         #     return ("Scene", new_scene())
         # case ("new-scene", name):
@@ -181,24 +198,31 @@ def repl():
     print("Welcome to Workflow REPL...")
     print("type \"exit\" to leave...\n")
     env = {}
-    inp = input()
-    def interp_with_define(wf):
-        match(wf):
-            case ("define"|"def", x ,y):
-                result = y
-                if(y != x):
-                    result = interp_workflow(env, y)
-                env[x] = result
-                return result
-            case ("undefine"|"undef", x):
-                return env.pop(x)
-            case x:
-                return interp_workflow(env, x)
-    
-    while (inp != "exit"):
-        if(inp != ""):
-            print(repr(interp_with_define(sexp(inp).content())))
+    try:
+        print(">",end=" ")
         inp = input()
+        def interp_with_define(wf):
+            match(wf):
+                case ("define"|"def", x ,y):
+                    result = y
+                    if(y != x):
+                        result = interp_workflow(env, y)
+                    env[x] = result
+                    return result
+                case ("undefine"|"undef", x):
+                    return env.pop(x)
+                case ("exit" | ("exit",)):
+                    raise EOFError()
+                case x:
+                    return interp_workflow(env, x)
+        
+        while (1):
+            if(inp != ""):
+                print(repr(interp_with_define(sexp(inp).content())))
+            print(">",end=" ")
+            inp = input()
+    except EOFError:
+        print("Exiting...")
 
 if __name__ == "__main__":
     repl()

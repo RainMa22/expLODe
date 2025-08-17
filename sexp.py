@@ -94,23 +94,34 @@ try:
 except ValueError:
     pass
 
-class sexp(tuple):
-    def __new__(self,s):
-        return super().__new__(self,sexp.__gen_sexp(str(s)))
+class sexp():
+    # insteance variable __sexp is a int|float|tuple
+
+    def __init__(self,s):
+        self.__sexp = sexp.__make_sexp(str(s))[0]
     
     def content(self):
-        return self[0]
+        return self.__sexp
 
     def __eq__(self, value):
-        return self[0].__eq__(value)
+        return self.content() == value
     
     def __str__(self):
-        return f"'{self[0].__repr__()}" if type(self[0] is not (int | float)) else self[0].__repr__()
+        return self.__repr__()
     
     def __repr__(self):
-        return f"'{self[0].__repr__()}" if type(self[0] is not (int | float)) else self[0].__repr__()
-
-    def __gen_sexp(s: str):
+        content_repr = self.content().__repr__()
+        if(type(self.content())) is tuple:
+            return "'" + content_repr
+        else: 
+            return content_repr
+    def __hash__(self):
+        return self.content().__hash__()
+    
+    def __getitem__(self, item):
+        return self.content().__getitem__(item)
+    
+    def __make_sexp(s: str):
         s = s.replace("\t", " ").replace("\r"," ").replace("\n"," ").strip()
         # print(s)
 
@@ -127,9 +138,9 @@ class sexp(tuple):
             token_stack = []  # added and removed from the back
             curr_tokens = []
             curr_word = []
-            i = 0
-            while i < len(s):
-                c = s[i]
+            off = 0
+            while off < len(s):
+                c = s[off]
                 match(c):
                     case "(":
                         token_stack.append(curr_tokens)
@@ -138,6 +149,8 @@ class sexp(tuple):
                         if (len(curr_word) != 0):
                             curr_tokens.append(parse_word("".join(curr_word)))
                             curr_word = []
+                        if (len(token_stack) == 0):
+                            break
                         next_scope = token_stack.pop()
                         next_scope.append(tuple(curr_tokens))
                         curr_tokens = next_scope
@@ -146,28 +159,46 @@ class sexp(tuple):
                             curr_tokens.append(parse_word("".join(curr_word)))
                             curr_word = []
                     case "\"":
-                        offset,string = find_string(s[i+1:])
+                        offset,string = find_string(s[off+1:])
                         if(offset != -1):
                             if (len(curr_word) != 0):
                                 curr_tokens.append(parse_word("".join(curr_word)))
                                 curr_word = []
-                            i += offset + 1 # skip closing quotation as well
+                            off += offset + 1 # skip closing quotation as well
                             curr_tokens.append(string)
                         else: 
                             curr_word.append(c)
+                    case "'":
+                        if (len(curr_word) != 0):
+                            curr_tokens.append(parse_word("".join(curr_word)))
+                            curr_word = []
+                        if (s[off+1] != "("):
+                            continue
+                        offset, sub_sexp_tokens = tokenize(s[off + 1:])
+                        # hacky, could be better...
+                        sub_sexp = sexp("")
+                        sub_sexp.__sexp = sub_sexp_tokens[0]
+                        # print(sub_sexp)
+                        curr_tokens.append(sub_sexp)
+                        off += offset
                     case _:
                         curr_word.append(c)
-                # print(f"{i}[{c}]:",token_stack, curr_tokens, curr_word,sep = "\n")
-                i += 1
-            return tuple(curr_tokens)  
-        result = tokenize([char for char in s])
+                # print(f"{off}[{s[off]}]:", f"stack:{token_stack}, tokens:{curr_tokens}, word: {curr_word}" ,sep = "\n")
+                off += 1
+            # print(off, tuple(curr_tokens))
+            return (off, tuple(curr_tokens))  
+        _, result = tokenize([char for char in s])
         # print(result)
         return result
         # return result if len(result) > 1 else result[0]
 
 # print(sexp("1"))
 assert (sexp("1") == 1)
-
+# print(sexp("(with (a 12) '(divide a 4))"))
+# print(sexp("(with (a 12) '(divide a 4))") == (make_symbol("with"), (make_symbol("a"), 12), sexp("(divide a 4)")))
+# print((make_symbol("with"), (make_symbol("a"), 12), sexp("(divide a 4)")))
+assert (sexp("(with (a 12) '(divide a 4))") ==
+        ("with", ("a", 12), sexp("(divide a 4)")))
 assert (sexp("(with (a 12) (divide a 4))") ==
         ("with", ("a", 12), ("divide", "a", 4)))
 assert (sexp("(with (b 4) (with (a 12) (divide a b)))") ==
