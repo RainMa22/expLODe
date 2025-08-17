@@ -14,7 +14,9 @@ def interp_workflow(env: dict, wf, interp_override=None):
     def interp(wf):
         return interp_override(env, wf, interp_override)
     match(wf):
-        case "f" | "False":
+        case x if x == "f" and type(x) is make_symbol:
+            return False
+        case "False":
             return False
         case ("eval", something):
             if(type(something) is make_symbol):
