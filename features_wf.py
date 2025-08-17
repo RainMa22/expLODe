@@ -235,6 +235,9 @@ def repl():
             inp = input()
     except EOFError:
         print("Exiting...")
+    except Exception as e:
+        print(f"Unhandled Python Exception:")
+        raise e
 
 if __name__ == "__main__":
     repl()
