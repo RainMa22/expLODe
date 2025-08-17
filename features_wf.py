@@ -230,7 +230,14 @@ def repl():
         
         while (1):
             if(inp != ""):
-                print(repr(interp_with_define(env, sexp(inp).content())))
+                inp_sexp = sexp(inp)
+                # print("unclosed brackets: ", inp_sexp.num_unclosed)
+                while(inp_sexp.num_unclosed > 0):
+                    print("..." + "    "*inp_sexp.num_unclosed, end = " ")
+                    addition = input()
+                    inp = " ".join([inp, addition])
+                    inp_sexp = sexp(inp)
+                print(repr(interp_with_define(env, inp_sexp.content())))
             print(">",end=" ")
             inp = input()
     except EOFError:

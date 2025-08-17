@@ -103,10 +103,12 @@ class sexp():
         try:
             if(iter(s) and type(s) is not str):
                 self.__sexp = tuple(s)
+                self.num_unclosed = 0
             else:
-                self.__sexp = sexp.__make_sexp(str(s))[0]
+                raise Exception("needs sexp parsing") 
         except:
-            self.__sexp = sexp.__make_sexp(str(s))[0]
+            self.__sexp,self.num_unclosed = sexp.__make_sexp(str(s))
+            self.__sexp = self.__sexp[0]
 
     
     def content(self):
@@ -135,13 +137,14 @@ class sexp():
         # print(s)
 
         # tokenize
-        if (not s.startswith("(")) or not s.endswith(")"):
+        if (not s.startswith("(")):
+        # or not s.endswith(")"):
             if(s.startswith("\"")): 
                 result = find_string(s[1:])
                 if(result != -1): 
-                    return (find_string(s[1:])[1],)
+                    return ((find_string(s[1:])[1],), 0)
             # parse word into number if appropriate
-            return (parse_word(s),)            
+            return ((parse_word(s),),0)            
 
         def tokenize(s: list[str]):
             token_stack = []  # added and removed from the back
@@ -184,7 +187,7 @@ class sexp():
                         if (s[off+1] != "("):
                             off += 1
                             continue
-                        offset, sub_sexp_tokens = tokenize(s[off + 1:])
+                        offset, sub_sexp_tokens, num_unclosed = tokenize(s[off + 1:])
                         # hacky, could be better...
                         sub_sexp = sexp("")
                         sub_sexp.__sexp = sub_sexp_tokens[0]
@@ -196,11 +199,11 @@ class sexp():
                 # print(f"{off}[{s[off]}]:", f"stack:{token_stack}, tokens:{curr_tokens}, word: {curr_word}" ,sep = "\n")
                 off += 1
             # print(off, tuple(curr_tokens))
-            return (off, tuple(curr_tokens))  
-        _, result = tokenize([char for char in s])
-        # print(result)
-        return result
-        # return result if len(result) > 1 else result[0]
+            if(len(curr_word) != 0):
+                curr_tokens.append(parse_word("".join(curr_word)))
+            return off, tuple(curr_tokens), len(token_stack)
+        _, result, num_unclosed = tokenize([char for char in s])
+        return result, num_unclosed
 
 # print(sexp("1"))
 assert (sexp("1") == 1)
