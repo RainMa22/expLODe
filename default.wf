@@ -1,6 +1,15 @@
-(with 
+(define (fn-for-infile inFile)
+    (with 
     (og (import FBX inFile))
     (with (LOD1 (planar (deg->rad 10) og))
         (with (LOD2 (unsubdiv 10 og))
-            (export FBX outFile (+ og (+ LOD1 LOD2)))
-)))
+            (export FBX (+ outFolder (+ (+ "/" (filepath-filenameNoExt inFile)) 
+                ".combined.fbx")) (+ og (+ LOD1 LOD2)))
+    ))))
+(define (fn-for-infiles inFiles) 
+    (if (empty? inFiles) 
+        (list)
+        (cons (fn-for-infile (first inFiles))
+            (fn-for-infiles (rest inFiles)))))
+
+(fn-for-infiles inFiles)

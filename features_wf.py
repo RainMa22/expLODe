@@ -104,12 +104,18 @@ def interp_workflow(env: dict, wf, interp_override=None):
             return make_string(result.name if result is make_symbol else str(result))
         case ("make-symbol", *rest):
             return make_symbol(" ".join(map(lambda item: item.name if type(item) is make_symbol else str(item), rest)))
-        case (("cons",)):
+        case (("cons",)| ("list",)):
             return sexp(tuple())
         case ("cons", item, arr):
             return sexp((interp(item), *interp(arr)))
         case ("list", *items):
             return make_list(map(lambda item: interp(item),items))
+        case ("string-split", string, delimiter):
+            return make_list(interp(string).split(interp(delimiter)))
+        case ("filepath-basename", string):
+            return os.path.basename(interp(string))
+        case ("filepath-filenameNoExt", string):
+            return make_string(os.path.splitext(os.path.basename(interp(string)))[0])
         # case ("new-scene"):
         #     return ("Scene", new_scene())
         # case ("new-scene", name):
@@ -119,6 +125,7 @@ def interp_workflow(env: dict, wf, interp_override=None):
         # case ("copy-scene", ("Scene", src_scene), scene_name):
         #     return ("Scene", copy_scene(interp(src_scene), interp(env, scene_name)))
         case ("import", "FBX", path):
+            print(path)
             return tuple(importFBX(interp(path)))
         case ("export", "FBX", path):
             return (exportFBX(interp(path)))
@@ -215,6 +222,10 @@ def repl():
         def interp_with_define(env, wf, override=None):
             # print(env,wf, sep = "\n")
             match(wf):
+                case ("define"|"def", (x, *fargs), body):
+                    result = ("funV", fargs, env, body)
+                    env[x] = result
+                    return result
                 case ("define"|"def", x ,y):
                     result = y
                     if(y != x):
@@ -246,5 +257,5 @@ def repl():
         print(f"Unhandled Python Exception:")
         raise e
 
-if __name__ == "__main__":
+if __name__ == "__main__" or __name__ == "__console__":
     repl()

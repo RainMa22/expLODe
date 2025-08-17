@@ -121,7 +121,7 @@ class sexp():
         return self.__repr__()
     
     def __repr__(self):
-        content_repr = self.content().__repr__()
+        content_repr = "(" + " ".join([repr(item) for item in self.content()]) + ")"
         if(type(self.content())) is tuple:
             return "'" + content_repr
         else: 
@@ -131,6 +131,9 @@ class sexp():
     
     def __getitem__(self, item):
         return self.content().__getitem__(item)
+    
+    def __len__(self):
+        return self.content().__len__()
     
     def __make_sexp(s: str):
         s = s.replace("\t", " ").replace("\r"," ").replace("\n"," ").strip()
