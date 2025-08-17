@@ -1,11 +1,10 @@
 import math
 import os
 import sys
-
 # allow for import of features
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from features import *
-from sexp import sexp,make_symbol,make_string
+from sexp import sexp,make_symbol,make_string,make_list
 
 
 def interp_workflow(env: dict, wf, interp_override=None):
@@ -101,10 +100,12 @@ def interp_workflow(env: dict, wf, interp_override=None):
             return make_string(result.name if result is make_symbol else str(result))
         case ("make-symbol", *rest):
             return make_symbol(" ".join(map(lambda item: item.name if type(item) is make_symbol else str(item), rest)))
+        case (("cons",)):
+            return sexp(tuple())
         case ("cons", item, arr):
-            return (interp(item),*arr)
+            return sexp((interp(item), *interp(arr)))
         case ("list", *items):
-            return tuple(map(items, lambda item: interp(item)))
+            return make_list(map(lambda item: interp(item),items))
         # case ("new-scene"):
         #     return ("Scene", new_scene())
         # case ("new-scene", name):
@@ -136,7 +137,7 @@ def interp_workflow(env: dict, wf, interp_override=None):
         case ("collapse", ratio, target):
             return tuple(collapse(interp(ratio), interp(target), inplace=False))
         case (x, *rest):
-            return interp((env.get(x), *rest)) if x in env.keys() else (x, *rest)
+            return interp((env.get(x), *rest)) if x in env.keys() else ((interp(x), *rest))
         case (x,):
             return interp(env.get(x)) if x in env.keys() else (x,)
         case x:
@@ -184,10 +185,14 @@ assert (interp_workflow0("(with (b 4) (with (a 12) (/ a b)))") == 3)
 assert (interp_workflow0("(with (b 4) (with (a 12) (if (= a 12) (/ a b) -1)))") == 3)
 assert (interp_workflow0("(with (b 4) (with (a 12) (if (not (= a 12)) (/ a b) -1)))") == -1)
 assert (interp_workflow0("(with (b 4) (with (a 12) (if (= a 121) (/ a b) -1)))") == -1)
-assert (interp_workflow0("(first (b 4))") == 'b')
+assert (interp_workflow0("(first '(b 4))") == 'b')
+assert (interp_workflow0("(first (list b 4))") == 'b')
+assert (interp_workflow0("(first (cons b (cons 4 '())))") == 'b')
 # print (interp_workflow0("(rest (b 4))"))
-assert (interp_workflow0("(rest (b 4))") == (4,))
-assert (interp_workflow0("(empty? (rest (rest (b 4))))"))
+assert (interp_workflow0("(rest '(b 4))") == (4,))
+assert (interp_workflow0("(rest (cons b '(4)))") == (4,))
+assert (interp_workflow0("(rest (cons b (cons 4 '())))") == (4,))
+assert (interp_workflow0("(empty? (rest (rest '(b 4))))"))
 # print(interp_workflow({},(("funV", ('a', 'b'),{},('/','a','b')),12,3)))
 assert (interp_workflow({},(("funV", ('a', 'b'),{},('/','a','b')),12,3)) == 4)
 # print(interp_workflow0("(with (div (a b) (/ a b)) (div 12 3))"))

@@ -22,7 +22,9 @@ class make_string(str):
         return super().__str__()
     def __repr__(self):
         return super().__repr__()[1:-1].join(["\"","\""])
-    
+
+def make_list(iterable):
+    return sexp(iterable)
 
 def parse_word(word: str):
     try:
@@ -98,7 +100,14 @@ class sexp():
     # insteance variable __sexp is a int|float|tuple
 
     def __init__(self,s):
-        self.__sexp = sexp.__make_sexp(str(s))[0]
+        try:
+            if(iter(s) and type(s) is not str):
+                self.__sexp = tuple(s)
+            else:
+                self.__sexp = sexp.__make_sexp(str(s))[0]
+        except:
+            self.__sexp = sexp.__make_sexp(str(s))[0]
+
     
     def content(self):
         return self.__sexp
