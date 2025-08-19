@@ -100,6 +100,8 @@ class sexp():
     # insteance variable __sexp is a int|float|tuple
 
     def __init__(self,s):
+        if(type(s) is sexp):
+            self.__sexp = tuple(s.__sexp)
         try:
             if(iter(s) and type(s) is not str):
                 self.__sexp = tuple(s)

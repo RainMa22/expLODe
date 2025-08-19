@@ -148,6 +148,7 @@ def interp_workflow(env: dict, wf, interp_override=None):
         case ("collapse", ratio, target):
             return tuple(collapse(interp(ratio), interp(target), inplace=False))
         case (x, *rest):
+            # TOOO: need to fix the logic below
             return interp((env.get(x), *rest)) if x in env.keys() else ((interp(x), *rest))
         case (x,):
             return interp(env.get(x)) if x in env.keys() else (x,)
