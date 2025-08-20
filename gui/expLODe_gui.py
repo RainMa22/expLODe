@@ -146,7 +146,7 @@ class ChooseFileStep(QStepWidget):
         return prev
     
     def clear_substep(self):
-        return self.set_substep(EmptyStepWidget(GENERAL_CLASSES,lambda step: self.set_substep(step())))
+        return self.set_substep(ImportStep())
     
     def __str__(self):
         base_string = f"(def inFiles {repr(self.inFiles)})"
@@ -164,7 +164,7 @@ class ChooseFileStep(QStepWidget):
         """
     
     def updateFileList(self, files):
-        self.inFiles = make_list(map(lambda inFile: make_string(inFile), files))
+        self.inFiles = make_list(map(lambda inFile: (make_string(inFile)), files))
         basenames = list(map(lambda inFile: os.path.basename(inFile), files))
         # print(basenames, len(basenames))
         if(len(basenames) == 0):
@@ -181,11 +181,11 @@ class ChooseFileStep(QStepWidget):
         self.updateFileList(file_names)
 
 class WfFunctionStep(QStepWidget):
-    def __init__(self, wf_fun_name, wf_fun_params,max_row_idx = 0):
+    def __init__(self, wf_fun_name, wf_fun_params,max_row_idx = 0, target = "og"):
         super().__init__()
         self.max_row_idx = max_row_idx
         self.varname = wf_fun_name+"ed"
-        self.target = "inFile"
+        self.target = target
         self.wf_fun_name = wf_fun_name
         self.wf_fun_params = wf_fun_params
         self.objs = None
@@ -205,7 +205,7 @@ class WfFunctionStep(QStepWidget):
         self.varname_field.textChanged.connect(self.on_varname_change)
         self.target_field.textChanged.connect(self.on_target_name_change)
         self.varname_field.setText(self.varname)
-        self.target_field.setText("InFile")
+        self.target_field.setText(self.target)
         layout.addWidget(self.rmbtn, 0,4,Qt.AlignmentFlag.AlignRight)
         self.removal_action = lambda: None
         self.rmbtn.clicked.connect(lambda: self.get_removal_action()()) # abusing closures
@@ -230,6 +230,9 @@ class WfFunctionStep(QStepWidget):
         if(next is not None):
             glayout:QGridLayout = self.layout()
             glayout.addWidget(next,self.max_row_idx+1,0,1,5)
+            if(hasattr(next, "target_field")):
+                next.target_field.setText(self.varname)
+                next.target_field.textChanged.emit(None)
             if(hasattr(next, "removal_action")):
                 next.removal_action = lambda: self.clear_next()
             # next.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -246,10 +249,19 @@ class WfFunctionStep(QStepWidget):
                         {repr(make_list(self.objs)) if self.objs is not None else "ALL"}))
     {"{exportStep}" if type(self.next) is EmptyStepWidget else str(self.next)})
         """
-    
+
+class ImportStep(WfFunctionStep):
+    def __init__(self):
+        super().__init__("import", ["FBX", "InFile"])
+        self.varname_field.setText("og")
+        self.target_field.setText("inFile")
+        self.target_field.textChanged.emit(None)
+        self.varname_field.textChanged.emit(None)
+
 class UvUnwrapStep(WfFunctionStep):
     def __init__(self):
         super().__init__("uv-unwrap", [])
+
 
 class PlanarStep(WfFunctionStep):
     @QtCore.Slot()
@@ -258,10 +270,10 @@ class PlanarStep(WfFunctionStep):
             self.deg_field.setValue(0.001)
         self.deg_indicator.setText(f"degree: {self.deg_field.value()/100.0:.02f}")
         self.deg = self.deg_field.value()/100.0
-        self.wf_fun_params = [make_string(f"(deg->rad {self.deg})")]
+        self.wf_fun_params = [str(f"(deg->rad {self.deg})")]
 
     def __init__(self, deg:int|float = 10):
-        super().__init__("Planar", [make_string(f"(deg->rad {deg})")],1)
+        super().__init__("Planar", [str(f"(deg->rad {deg})")],1)
         glayout: QGridLayout = self.layout()
         self.deg_indicator = QLabel()
         self.deg_field = QSlider(Qt.Orientation.Horizontal)
@@ -314,41 +326,51 @@ class DecimateStep(WfFunctionStep):
         self.wf_fun_params = [make_string(str(self.ratio))]
 
 class ExportStep(QStepWidget):
-    def __init__(self):
+    def __init__(self, targets=["og"].copy(),suffix="out"):
         super().__init__()
         glayout = QGridLayout()
         self.setLayout(glayout)
         "export variables: ... as file ..."
         export_label = QLabel("Export Variable(s): ")
-        self.variable_field = QLineEdit(text="InFile")
-        as_label = QLabel("as File: ")
-        self.export_to = "./out.fbx"
-        self.file_choose_button = QPushButton(self.export_to)
-        self.file_choose_button.clicked.connect(self.chooseFile)
+        self.targets_field = QLineEdit(text=", ".join(targets))
+        as_label = QLabel("at Folder: ")
+        self.export_to = "./"
+        self.file_choose_button = QPushButton(os.path.relpath(self.export_to))
+        self.file_choose_button.clicked.connect(self.chooseFolder)
+        self.suffix_label = QLabel("With suffix: ")
+        self.suffix_field = QLineEdit(text = suffix)
+        self.extension_label = QLabel(".fbx")
         export_btn = QPushButton("Export")
         glayout.addWidget(export_label, 0,0)
-        glayout.addWidget(self.variable_field,0,1)
+        glayout.addWidget(self.targets_field,0,1)
         glayout.addWidget(as_label, 0 ,2)
         glayout.addWidget(self.file_choose_button,0,3)
+        glayout.addWidget(self.suffix_label,1,0)
+        glayout.addWidget(self.suffix_field,1,1)
+        glayout.addWidget(self.extension_label, 1, 2)
         glayout.addWidget(export_btn, 1,3)
         self.export_signal = export_btn.clicked
     
     @QtCore.Slot()
-    def chooseFile(self):
-        file, _ = QFileDialog.getSaveFileName(None, 
+    def chooseFolder(self):
+        folder, _ = QFileDialog.getExistingDirectory(None, 
                                               "Choose an File to save to",
-                                              os.path.expanduser("~"),
-                                              "FBX files (*.fbx)")
-        self.export_to = os.path.relpath(file)
-        self.file_choose_button.setText(self.export_to)
+                                              os.path.expanduser("~"))
+        
+        self.export_to = os.path.abspath(folder)
+        self.file_choose_button.setText(os.path.relpath(self.export_to))
 
     def __str__(self):
-        variables = self.variable_field.text().split(",")
-        if(len(variables) == 1):
-            variables = variables[0]        
+        targets = self.targets_field.text().split(",")
+        if(len(targets) == 1):
+            targets = targets[0]        
         else:
-            variables = ('+',) + tuple(map(lambda v: make_string(v.strip()),variables))
-        return f"(export FBX {make_string(os.path.abspath(self.export_to))} {str(variables)})"
+            targets = ('+',) + tuple(map(lambda v: make_string(v.strip()),targets))
+
+        outFile = f"(+ {make_string(self.export_to)} \
+            (+ (+ {make_string('/')} (filepath-filenameNoExt inFile)) \
+                {make_string(self.suffix_field.text())}.fbx))"
+        return f"(export FBX {make_string(outFile)} {str(targets)})"
 
 GENERAL_CLASSES = [UvUnwrapStep,
                     PlanarStep,
