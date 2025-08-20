@@ -353,9 +353,9 @@ class ExportStep(QStepWidget):
     
     @QtCore.Slot()
     def chooseFolder(self):
-        folder, _ = QFileDialog.getExistingDirectory(None, 
+        folder = QFileDialog.getExistingDirectory(None, 
                                               "Choose an File to save to",
-                                              os.path.expanduser("~"))
+                                              self.export_to)
         
         self.export_to = os.path.abspath(folder)
         self.file_choose_button.setText(os.path.relpath(self.export_to))
