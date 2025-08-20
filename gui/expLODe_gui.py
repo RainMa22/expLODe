@@ -52,11 +52,19 @@ class mainWidget(QWidget):
             self.setWidget(self.center_widget)
             self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
             self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            self.add(ChooseFileStep())
-            self.add(ExportStep())
+            self.fileStep = ChooseFileStep()
+            self.exportStep = ExportStep()
+            self.exportStep.export_signal.connect(lambda: print(str(self)))
+            self.add(self.fileStep)
+            self.add(self.exportStep)
         
         def add(self, widget:QWidget):
             self.center_widget.layout().addWidget(widget)
+        
+        def __str__(self):
+            return f"""
+            {str(self.fileStep).format(exportStep = str(self.exportStep))}
+            """
 
     class content_widget(QSplitter):
         def __init__(self):
@@ -145,20 +153,20 @@ class ChooseFileStep(QStepWidget):
         if self.substep is None:
             return base_string
         return f"""
-        {base_string}
-        (def (fn-for-inFile{self.id} inFile) {str(self.substep)})    
-        (def (fn-for-inFiles{self.id} inFiles)
-            (if (empty? inFiles)
-                '()
-                (cons (fn-for-inFile{self.id} (first inFiles)
-                    (fn-for-inFiles{self.id} (rest inFiles))))))
-        (fn-for-inFiles{self.id} inFiles)
+    {base_string}
+    (def (fn-for-inFile inFile) {"{exportStep}" if type(self.substep) is EmptyStepWidget else str(self.substep)})    
+    (def (fn-for-inFiles inFiles)
+        (if (empty? inFiles)
+            '()
+            (cons (fn-for-inFile (first inFiles)
+                (fn-for-inFiles (rest inFiles))))))
+    (fn-for-inFiles inFiles)
         """
     
     def updateFileList(self, files):
         self.inFiles = make_list(map(lambda inFile: make_string(inFile), files))
         basenames = list(map(lambda inFile: os.path.basename(inFile), files))
-        print(basenames, len(basenames))
+        # print(basenames, len(basenames))
         if(len(basenames) == 0):
             self.fileLabels.setText(f'3D Model Input(s) Not Set...')
         else:
@@ -173,9 +181,10 @@ class ChooseFileStep(QStepWidget):
         self.updateFileList(file_names)
 
 class WfFunctionStep(QStepWidget):
-    def __init__(self, wf_fun_name, wf_fun_params):
+    def __init__(self, wf_fun_name, wf_fun_params,max_row_idx = 0):
         super().__init__()
-        self.varname = wf_fun_name
+        self.max_row_idx = max_row_idx
+        self.varname = wf_fun_name+"ed"
         self.target = "inFile"
         self.wf_fun_name = wf_fun_name
         self.wf_fun_params = wf_fun_params
@@ -195,7 +204,7 @@ class WfFunctionStep(QStepWidget):
         layout.addWidget(self.varname_field,0,3)
         self.varname_field.textChanged.connect(self.on_varname_change)
         self.target_field.textChanged.connect(self.on_target_name_change)
-        self.varname_field.setText(wf_fun_name)
+        self.varname_field.setText(self.varname)
         self.target_field.setText("InFile")
         layout.addWidget(self.rmbtn, 0,4,Qt.AlignmentFlag.AlignRight)
         self.removal_action = lambda: None
@@ -205,11 +214,14 @@ class WfFunctionStep(QStepWidget):
     @QtCore.Slot()
     def on_target_name_change(self):
         self.target = self.target_field.text()
+    
     @QtCore.Slot()
     def on_varname_change(self):
         self.varname = self.varname_field.text()
+    
     def get_removal_action(self):
         return self.removal_action
+    
     def set_next(self, next:QStepWidget):
         prev =self.next
         if(prev is not None):
@@ -217,7 +229,7 @@ class WfFunctionStep(QStepWidget):
             prev.deleteLater()
         if(next is not None):
             glayout:QGridLayout = self.layout()
-            glayout.addWidget(next,1,0,1,5)
+            glayout.addWidget(next,self.max_row_idx+1,0,1,5)
             if(hasattr(next, "removal_action")):
                 next.removal_action = lambda: self.clear_next()
             # next.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -229,10 +241,10 @@ class WfFunctionStep(QStepWidget):
     
     def __str__(self):
         return f"""
-        (with ({self.varname} ({self.wf_fun_name} 
-                                {" ".join(self.wf_fun_params)}
-                                {repr(make_list(self.objs)) if self.objs is not None else "ALL"}))
-            {self.varname if self.next is None else str(self.next)})
+(with ({self.varname} ({self.wf_fun_name} 
+                        {" ".join(self.wf_fun_params)}
+                        {repr(make_list(self.objs)) if self.objs is not None else "ALL"}))
+    {"{exportStep}" if type(self.next) is EmptyStepWidget else str(self.next)})
         """
     
 class UvUnwrapStep(WfFunctionStep):
@@ -240,16 +252,66 @@ class UvUnwrapStep(WfFunctionStep):
         super().__init__("uv-unwrap", [])
 
 class PlanarStep(WfFunctionStep):
+    @QtCore.Slot()
+    def on_deg_change(self):
+        if(self.deg_field.value()==0):
+            self.deg_field.setValue(0.001)
+        self.deg_indicator.setText(f"degree: {self.deg_field.value()/100.0:.02f}")
+        self.deg = self.deg_field.value()/100.0
+        self.wf_fun_params = [make_string(f"(deg->rad {self.deg})")]
+
     def __init__(self, deg:int|float = 10):
-        super().__init__("Planar", [make_string(f"(deg->rad {deg})")])
+        super().__init__("Planar", [make_string(f"(deg->rad {deg})")],1)
+        glayout: QGridLayout = self.layout()
+        self.deg_indicator = QLabel()
+        self.deg_field = QSlider(Qt.Orientation.Horizontal)
+        self.deg_field.setRange(0,36000)
+        self.deg_field.valueChanged.connect(self.on_deg_change)
+        self.deg_field.setValue(deg/100.0)
+        self.on_deg_change()
+        glayout.addWidget(self.deg_indicator,1,0)
+        glayout.addWidget(self.deg_field,1,1,1,3)
+        self.clear_next()
+        
 
 class UnsubdivStep(WfFunctionStep):
-    def __init__(self, iterations:int|float = 10):
-        super().__init__("unsubdiv", [make_string(str(iterations))])
+    def __init__(self, iterations:int = 10):
+        super().__init__("unsubdiv", [make_string(str(iterations))],1)
+        glayout: QGridLayout = self.layout()
+        self.iteration_indicator = QLabel()
+        self.iteration_field = QSlider(Qt.Orientation.Horizontal)
+        self.iteration_field.setValue(iterations)
+        self.iteration_field.setRange(1,100)
+        self.iteration_field.valueChanged.connect(self.iteration_changed)
+        self.iteration_changed()
+        glayout.addWidget(self.iteration_indicator, 1,0)
+        glayout.addWidget(self.iteration_field, 1,1,1,3)
+    
+    @QtCore.Slot()
+    def iteration_changed(self):
+        self.iteration_indicator.setText(f"iterations: {self.iteration_field.value()}")
+        self.iterations = self.iteration_field.value()
+        self.wf_fun_params = [make_string(str(self.iterations))]
+
 
 class DecimateStep(WfFunctionStep):
     def __init__(self, ratio:int|float = 1.0):
-        super().__init__("Decimate", [make_string(str(ratio))])
+        super().__init__("Decimate", [make_string(str(ratio))],1)
+        glayout: QGridLayout = self.layout()
+        self.ratio_indicator = QLabel()
+        self.ratio_field = QSlider(Qt.Orientation.Horizontal)
+        self.ratio_field.setRange(1,100)
+        self.ratio_field.setValue(ratio*100.0)
+        self.ratio_field.valueChanged.connect(self.iteration_changed)
+        self.iteration_changed()
+        glayout.addWidget(self.ratio_indicator, 1,0)
+        glayout.addWidget(self.ratio_field, 1,1,1,3)
+    
+    @QtCore.Slot()
+    def iteration_changed(self):
+        self.ratio_indicator.setText(f"ratio: {self.ratio_field.value()/100.0}")
+        self.ratio = self.ratio_field.value()/100.0
+        self.wf_fun_params = [make_string(str(self.ratio))]
 
 class ExportStep(QStepWidget):
     def __init__(self):
@@ -258,7 +320,7 @@ class ExportStep(QStepWidget):
         self.setLayout(glayout)
         "export variables: ... as file ..."
         export_label = QLabel("Export Variable(s): ")
-        self.variable_field = QLineEdit()
+        self.variable_field = QLineEdit(text="InFile")
         as_label = QLabel("as File: ")
         self.export_to = "./out.fbx"
         self.file_choose_button = QPushButton(self.export_to)
@@ -267,7 +329,7 @@ class ExportStep(QStepWidget):
         glayout.addWidget(export_label, 0,0)
         glayout.addWidget(self.variable_field,0,1)
         glayout.addWidget(as_label, 0 ,2)
-        glayout.addWidget(self.file_choose_button,1,3)
+        glayout.addWidget(self.file_choose_button,0,3)
         glayout.addWidget(export_btn, 1,3)
         self.export_signal = export_btn.clicked
     
@@ -282,8 +344,11 @@ class ExportStep(QStepWidget):
 
     def __str__(self):
         variables = self.variable_field.text().split(",")
-        variables = make_list(map(lambda v: make_string(v.strip()),variables))
-        return f"(export FBX {make_string(os.path.abspath(self.export_to))} {repr(variables)})"
+        if(len(variables) == 1):
+            variables = variables[0]        
+        else:
+            variables = ('+',) + tuple(map(lambda v: make_string(v.strip()),variables))
+        return f"(export FBX {make_string(os.path.abspath(self.export_to))} {str(variables)})"
 
 GENERAL_CLASSES = [UvUnwrapStep,
                     PlanarStep,

@@ -57,9 +57,14 @@ def interp_workflow(env: dict, wf, interp_override=None):
                     newEnv[farg] = interp(args[i])
                 return interp_override(newEnv, body, interp_override)
         # (add x y) | (+ x y)
-        case ("add" | "+", x, y):
-            # print(interp(x), interp(y))
-            return interp(x) + interp(y)
+        # case ("add" | "+", x, y):
+        #     # print(interp(x), interp(y))
+        #     return interp(x) + interp(y)
+        case ("add" | "+", *vars):
+            sum = interp(vars[0])
+            for i in range(1,len(vars)):
+                sum += interp(vars[i])
+            return sum
         # (sub x y) | (- x y)
         case ("sub" | "-", x, y):
             return interp(x) - interp(y)
