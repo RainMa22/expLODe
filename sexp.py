@@ -110,7 +110,7 @@ class sexp():
                 raise Exception("needs sexp parsing") 
         except:
             self.__sexp,self.num_unclosed = sexp.__make_sexp(str(s))
-            self.__sexp = self.__sexp[0]
+            if(len(self.__sexp) != 0): self.__sexp = self.__sexp[0]
 
     
     def content(self):
@@ -148,16 +148,21 @@ class sexp():
                 result = find_string(s[1:])
                 if(result != -1): 
                     return ((find_string(s[1:])[1],), 0)
+            elif(s.startswith("'")):
+                result, num_unclosed = sexp.__make_sexp(s[1:])
+                # print(s[1:])
+                return (tuple() if len(result) == 0 else sexp(result[0])), num_unclosed
             # parse word into number if appropriate
-            return ((parse_word(s),),0)            
+            else:
+                return ((parse_word(s),),0)            
 
-        def tokenize(s: list[str]):
+        def tokenize(loc: list[str]):
             token_stack = []  # added and removed from the back
             curr_tokens = []
             curr_word = []
             off = 0
-            while off < len(s):
-                c = s[off]
+            while off < len(loc):
+                c = loc[off]
                 match(c):
                     case "(":
                         token_stack.append(curr_tokens)
@@ -166,17 +171,20 @@ class sexp():
                         if (len(curr_word) != 0):
                             curr_tokens.append(parse_word("".join(curr_word)))
                             curr_word = []
-                        if (len(token_stack) == 0):
-                            break
+                        # if (len(token_stack) == 0):
+                        #     break
                         next_scope = token_stack.pop()
                         next_scope.append(tuple(curr_tokens))
                         curr_tokens = next_scope
+                        if(len(token_stack) == 0):
+                            off +=1
+                            break
                     case " ":
                         if (len(curr_word) != 0):
                             curr_tokens.append(parse_word("".join(curr_word)))
                             curr_word = []
                     case "\"":
-                        offset,string = find_string(s[off+1:])
+                        offset,string = find_string(loc[off+1:])
                         if(offset != -1):
                             if (len(curr_word) != 0):
                                 curr_tokens.append(parse_word("".join(curr_word)))
@@ -189,13 +197,14 @@ class sexp():
                         if (len(curr_word) != 0):
                             curr_tokens.append(parse_word("".join(curr_word)))
                             curr_word = []
-                        if (s[off+1] != "("):
+                        if (loc[off+1] != "("):
                             off += 1
                             continue
-                        offset, sub_sexp_tokens, num_unclosed = tokenize(s[off + 1:])
-                        # hacky, could be better...
-                        sub_sexp = sexp("")
-                        sub_sexp.__sexp = sub_sexp_tokens[0]
+                        # print(loc[off + 1:])
+                        offset, sub_sexp_tokens, num_unclosed = tokenize(loc[off + 1:])
+                        # offset += 1
+                        # print(sub_sexp_tokens)
+                        sub_sexp = sexp(sub_sexp_tokens[0])
                         # print(sub_sexp)
                         curr_tokens.append(sub_sexp)
                         off += offset
@@ -206,6 +215,7 @@ class sexp():
             # print(off, tuple(curr_tokens))
             if(len(curr_word) != 0):
                 curr_tokens.append(parse_word("".join(curr_word)))
+            # print(curr_tokens)
             return off, tuple(curr_tokens), len(token_stack)
         _, result, num_unclosed = tokenize([char for char in s])
         return result, num_unclosed
@@ -223,6 +233,8 @@ assert (sexp("(with (b 4) (with (a 12) (divide a b)))") ==
         ("with", ("b", 4),
         ("with", ("a", 12),
         ("divide", "a", "b"))))
+assert (sexp("'()") == sexp(sexp(tuple())))
+assert (sexp("(= '() (list))") == ("=", sexp(sexp(tuple())), ("list",)))
 assert (sexp("(with (b 4)\r\n\t(with (a 12) (divide a b)))") ==
         ("with", ("b", 4),
         ("with", ("a", 12),
