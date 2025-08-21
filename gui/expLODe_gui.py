@@ -54,10 +54,29 @@ class mainWidget(QFrame):
             self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             self.fileStep = ChooseFileStep()
             self.exportStep = ExportStep()
-            self.exportStep.export_signal.connect(lambda: print(str(self)))
+            self.exportStep.export_signal.connect(self.export)
             self.code_signal = self.exportStep.show_code_signal
             self.add(self.fileStep)
             self.add(self.exportStep)
+        
+        @QtCore.Slot()
+        def export(self):
+            script = str(self)
+            import time
+            from expLODe import open_blender_python
+            with open_blender_python("features_wf.py") as proc:
+                time.sleep(1.)
+                proc_in = proc.stdin
+                for line in script.splitlines():
+                    proc_in.write(line.encode())  
+                    proc_in.write("\n".encode())
+                    print(line)
+                    proc_in.flush()
+                    time.sleep(0.1)
+                proc_in.close()
+            QMessageBox.information(None,"Export Completed","Export completed")
+            
+            
         
         def add(self, widget:QWidget):
             self.center_widget.layout().addWidget(widget)
@@ -186,8 +205,8 @@ class ChooseFileStep(QStepWidget):
 (def (fn-for-inFiles inFiles)
     (if (empty? inFiles)
         '()
-        (cons (fn-for-inFile (first inFiles)
-            (fn-for-inFiles (rest inFiles))))))
+        (cons (fn-for-inFile (first inFiles))
+            (fn-for-inFiles (rest inFiles)))))
 (fn-for-inFiles inFiles)
         """
     
@@ -279,8 +298,12 @@ class WfFunctionStep(QStepWidget):
         return self.set_next(EmptyStepWidget(GENERAL_CLASSES,lambda step: self.set_next(step())))
     
     def __str__(self):
+        fun_name = self.wf_fun_name.lower()
         return f"""
-(with ({self.varname} ({self.wf_fun_name} {" ".join(self.wf_fun_params)} {self.target if self.target is not None else "ALL"})) {"{exportStep}" if type(self.next) is EmptyStepWidget else str(self.next)})
+(with 
+    ({self.varname} 
+        ({fun_name} {" ".join(self.wf_fun_params)} {self.target if self.target is not None else "ALL"})) 
+    {"{exportStep}" if type(self.next) is EmptyStepWidget else str(self.next)})
 """
 
 class ImportStep(WfFunctionStep):
@@ -321,7 +344,7 @@ class PlanarStep(WfFunctionStep):
 
 class UnsubdivStep(WfFunctionStep):
     def __init__(self, iterations:int = 10):
-        super().__init__("unsubdiv", [make_string(str(iterations))],1)
+        super().__init__("Unsubdiv", [make_string(str(iterations))],1)
         glayout: QGridLayout = self.layout()
         self.iteration_indicator = QLabel()
         self.iteration_field = QSlider(Qt.Orientation.Horizontal)
@@ -401,7 +424,7 @@ class ExportStep(QStepWidget):
         if(len(targets) == 1):
             targets = targets[0]        
         else:
-            targets = "(+ " + " ".join(map(lambda v: v.strip(),targets))
+            targets = "(+ " + " ".join(map(lambda v: v.strip(),targets)) + ")"
 
         outFile = f"""
 (+ {repr(make_string(self.export_to))} 
@@ -421,7 +444,7 @@ class mainWindow(QMainWindow):
         self.main_widget = mainWidget()
         self.setCentralWidget(self.main_widget)
         self.setMenuBar(menubar())
-        self.resize(800,600)
+        self.resize(1920,1080)
     def get_workflows_widget(self):
         return self.main_widget.get_workflows_widget()
 
