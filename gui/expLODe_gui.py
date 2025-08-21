@@ -40,7 +40,7 @@ class menubar(QMenuBar):
         super().__init__()
         self.addMenu(menubar.fileMenu())
 
-class mainWidget(QWidget):
+class mainWidget(QFrame):
     class WorkflowWidget(QScrollArea):
         def __init__(self):
             super().__init__()
@@ -55,6 +55,7 @@ class mainWidget(QWidget):
             self.fileStep = ChooseFileStep()
             self.exportStep = ExportStep()
             self.exportStep.export_signal.connect(lambda: print(str(self)))
+            self.code_signal = self.exportStep.show_code_signal
             self.add(self.fileStep)
             self.add(self.exportStep)
         
@@ -63,15 +64,24 @@ class mainWidget(QWidget):
         
         def __str__(self):
             return f"""
-            {str(self.fileStep).format(exportStep = str(self.exportStep))}
+{str(self.fileStep).format(exportStep = str(self.exportStep))}
             """
 
     class content_widget(QSplitter):
         def __init__(self):
             super().__init__(Qt.Orientation.Horizontal)
             self.workflows_widget = mainWidget.WorkflowWidget()
+            self.code_indicator = QLabel("")
+            self.code_indicator.setFont("Courier")
+            self.code_indicator.setStyleSheet("background: black; color: white")
             self.addWidget(self.workflows_widget)
-            self.addWidget(QLabel("Hello"))
+            self.addWidget(self.code_indicator)
+            self.workflows_widget.code_signal.connect(self.show_code)
+
+        def show_code(self):
+            self.code_indicator.setText((str(self.workflows_widget)))
+            self.code_indicator.setParent(None)
+            self.addWidget(self.code_indicator)
             
     def __init__(self):
         super().__init__()
@@ -83,13 +93,24 @@ class mainWidget(QWidget):
         return self.content_widget.workdlow_widget
 
 
-class QStepWidget(QWidget):
+class QStepWidget(QFrame):
     def __init__(self):
         super().__init__()
         self.id = hash(os.times().elapsed)
         # self.setObjectName("QStepWidget")
-        # TODO: make the code below work
-        self.setStyleSheet("QStepWidget{border: 1px solid black; border-radius: 1%;}")
+        self.setProperty("widgetclass", "QStepWidget")
+        self.setAutoFillBackground(True)
+        self.setStyleSheet("""
+                           QStepWidget{
+                            border: 1px solid black; 
+                            border-radius: 20%;
+                            background-color: transparent;
+                           }""")
+    # def paintEvent(self, event):
+    #     super().paintEvent(event)
+    #     painter = QtGui.QPainter(self)
+    #     painter.setPen(QtGui.QPen(Qt.black, 1))
+    #     painter.drawRect(self.rect().adjusted(0, 0, -1, -1))
 
 class EmptyStepWidget(QStepWidget):
     def __init__(self, compatible_classes:list, onconnect):
@@ -108,21 +129,28 @@ class EmptyStepWidget(QStepWidget):
                 str(compatible_class)).triggered.connect(
                     on_trigger(compatible_class))
         self.btn.setMenu(self.selection_menu)
-        # self.btn.clicked.connect(lambda: self.btn.showMenu)
-        # self.selection_menu.show()
+        self.setStyleSheet(
+            """
+            EmptyStepWidget{
+                border: 0px;
+                border-radius: 0px;
+            }
+            """
+        )
         grid_layout.addWidget(self.btn,0,4,Qt.AlignmentFlag.AlignRight)
 
 class ChooseFileStep(QStepWidget):
     def __init__(self):
         super().__init__()
         glayout = QGridLayout()
-        glayout.setContentsMargins(0,0,0,0)
+        glayout.setContentsMargins(10,10,10,10)
+        # print(glayout.contentsMargins())
         self.setLayout(glayout)
         self.fileLabels = QLabel()
         self.fileLabels.setWordWrap(True)
         choose_prompt = "Choose File(s)"
         choose_label:QLabel = QLabel(choose_prompt)
-        choose_btn: QPushButton = QPushButton("...")
+        choose_btn: QPushButton = QPushButton("Choose File")
         glayout.addWidget(choose_label,0,0)
         glayout.addWidget(choose_btn,0,4)
         choose_btn.clicked.connect(self.chooseFBX)
@@ -153,14 +181,14 @@ class ChooseFileStep(QStepWidget):
         if self.substep is None:
             return base_string
         return f"""
-    {base_string}
-    (def (fn-for-inFile inFile) {"{exportStep}" if type(self.substep) is EmptyStepWidget else str(self.substep)})    
-    (def (fn-for-inFiles inFiles)
-        (if (empty? inFiles)
-            '()
-            (cons (fn-for-inFile (first inFiles)
-                (fn-for-inFiles (rest inFiles))))))
-    (fn-for-inFiles inFiles)
+{base_string}
+(def (fn-for-inFile inFile) {"{exportStep}" if type(self.substep) is EmptyStepWidget else str(self.substep)})    
+(def (fn-for-inFiles inFiles)
+    (if (empty? inFiles)
+        '()
+        (cons (fn-for-inFile (first inFiles)
+            (fn-for-inFiles (rest inFiles))))))
+(fn-for-inFiles inFiles)
         """
     
     def updateFileList(self, files):
@@ -209,6 +237,14 @@ class WfFunctionStep(QStepWidget):
         layout.addWidget(self.rmbtn, 0,4,Qt.AlignmentFlag.AlignRight)
         self.removal_action = lambda: None
         self.rmbtn.clicked.connect(lambda: self.get_removal_action()()) # abusing closures
+        self.setStyleSheet(
+            """
+            WfFunctionStep{
+                border: 0px;
+                border-radius: 0px;
+            }
+            """
+        )
         self.clear_next()
     
     @QtCore.Slot()
@@ -244,15 +280,12 @@ class WfFunctionStep(QStepWidget):
     
     def __str__(self):
         return f"""
-(with ({self.varname} ({self.wf_fun_name} 
-                        {" ".join(self.wf_fun_params)}
-                        {repr(make_list(self.objs)) if self.objs is not None else "ALL"}))
-    {"{exportStep}" if type(self.next) is EmptyStepWidget else str(self.next)})
-        """
+(with ({self.varname} ({self.wf_fun_name} {" ".join(self.wf_fun_params)} {self.target if self.target is not None else "ALL"})) {"{exportStep}" if type(self.next) is EmptyStepWidget else str(self.next)})
+"""
 
 class ImportStep(WfFunctionStep):
     def __init__(self):
-        super().__init__("import", ["FBX", "InFile"])
+        super().__init__("import", ["FBX"])
         self.varname_field.setText("og")
         self.target_field.setText("inFile")
         self.target_field.textChanged.emit(None)
@@ -267,7 +300,7 @@ class PlanarStep(WfFunctionStep):
     @QtCore.Slot()
     def on_deg_change(self):
         if(self.deg_field.value()==0):
-            self.deg_field.setValue(0.001)
+            self.deg_field.setValue(1)
         self.deg_indicator.setText(f"degree: {self.deg_field.value()/100.0:.02f}")
         self.deg = self.deg_field.value()/100.0
         self.wf_fun_params = [str(f"(deg->rad {self.deg})")]
@@ -277,9 +310,9 @@ class PlanarStep(WfFunctionStep):
         glayout: QGridLayout = self.layout()
         self.deg_indicator = QLabel()
         self.deg_field = QSlider(Qt.Orientation.Horizontal)
-        self.deg_field.setRange(0,36000)
+        self.deg_field.setRange(1,36000)
         self.deg_field.valueChanged.connect(self.on_deg_change)
-        self.deg_field.setValue(deg/100.0)
+        self.deg_field.setValue(deg*100.0)
         self.on_deg_change()
         glayout.addWidget(self.deg_indicator,1,0)
         glayout.addWidget(self.deg_field,1,1,1,3)
@@ -340,16 +373,19 @@ class ExportStep(QStepWidget):
         self.suffix_label = QLabel("With suffix: ")
         self.suffix_field = QLineEdit(text = suffix)
         self.extension_label = QLabel(".fbx")
+        show_code_btn = QPushButton("Show Emitted Code")
         export_btn = QPushButton("Export")
         glayout.addWidget(export_label, 0,0)
-        glayout.addWidget(self.targets_field,0,1)
-        glayout.addWidget(as_label, 0 ,2)
+        glayout.addWidget(self.targets_field,0,1,1,2)
+        glayout.addWidget(as_label, 0 ,3)
         glayout.addWidget(self.file_choose_button,0,3)
         glayout.addWidget(self.suffix_label,1,0)
-        glayout.addWidget(self.suffix_field,1,1)
-        glayout.addWidget(self.extension_label, 1, 2)
-        glayout.addWidget(export_btn, 1,3)
+        glayout.addWidget(self.suffix_field,1,1, 1, 2)
+        glayout.addWidget(self.extension_label, 1, 3)
+        glayout.addWidget(show_code_btn, 2,2)
+        glayout.addWidget(export_btn, 2,3)
         self.export_signal = export_btn.clicked
+        self.show_code_signal = show_code_btn.clicked
     
     @QtCore.Slot()
     def chooseFolder(self):
@@ -365,11 +401,12 @@ class ExportStep(QStepWidget):
         if(len(targets) == 1):
             targets = targets[0]        
         else:
-            targets = ('+',) + tuple(map(lambda v: make_string(v.strip()),targets))
+            targets = "(+ " + " ".join(map(lambda v: v.strip(),targets))
 
-        outFile = f"(+ {make_string(self.export_to)} \
-            (+ (+ {make_string('/')} (filepath-filenameNoExt inFile)) \
-                {make_string(self.suffix_field.text())}.fbx))"
+        outFile = f"""
+(+ {repr(make_string(self.export_to))} 
+    (filepath-filenameNoExt inFile) 
+    {repr(make_string(self.suffix_field.text()+".fbx"))})"""
         return f"(export FBX {make_string(outFile)} {str(targets)})"
 
 GENERAL_CLASSES = [UvUnwrapStep,
