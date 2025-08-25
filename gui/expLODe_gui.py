@@ -6,6 +6,13 @@ import os
 from expLODe_config import get_config,write_config, check_version
 from sexp import make_string, make_list, make_symbol,sexp
 
+class StepsPreset:
+    def __init__(self):
+        self.import_step = None
+        self.choose_file_step = None
+        self.additional_steps = []
+        self.export_step = None
+
 
 class FileMenu(QMenu):
     open_signal = QtCore.Signal()
@@ -47,81 +54,93 @@ class MenuBar(QMenuBar):
         self.open_signal = self.fileMenu.open_signal
         self.save_signal = self.fileMenu.save_signal
 
-class MainWidget(QFrame):
-    class WorkflowWidget(QScrollArea):
-        def __init__(self):
-            super().__init__()
-            self.setWidgetResizable(True)
-            self.center_widget = QWidget()
-            layout = QVBoxLayout(self.center_widget)
-            layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-            self.center_widget.setLayout(layout)
-            self.setWidget(self.center_widget)
-            self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-            self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-            self.fileStep = ChooseFileStep()
-            self.exportStep = ExportStep()
-            self.exportStep.export_signal.connect(self.export)
-            self.code_signal = self.exportStep.show_code_signal
-            self.add(self.fileStep)
-            self.add(self.exportStep)
+class WorkflowWidget(QScrollArea):
+    def __init__(self):
+        super().__init__()
+        self.setWidgetResizable(True)
+        self.center_widget = QWidget()
+        layout = QVBoxLayout(self.center_widget)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.center_widget.setLayout(layout)
+        self.setWidget(self.center_widget)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.fileStep = ChooseFileStep()
+        self.exportStep = ExportStep()
+        self.exportStep.export_signal.connect(self.export)
+        self.code_signal = self.exportStep.show_code_signal
+        self.add(self.fileStep)
+        self.add(self.exportStep)
+    
+    def apply_preset(self, preset: StepsPreset):
+        self.fileStep.apply_preset(preset)
+        self.exportStep.apply_preset(preset)
+
+    @QtCore.Slot()
+    def export(self):
+        script = str(self)
+        import time
+        from expLODe import open_blender_python
+        with open_blender_python("features_wf.py") as proc:
+            time.sleep(1.)
+            proc_in = proc.stdin
+            for line in script.splitlines():
+                proc_in.write(line.encode())  
+                proc_in.write("\n".encode())
+                print(line)
+                proc_in.flush()
+                time.sleep(0.1)
+            proc_in.close()
+        QMessageBox.information(None,"Export Completed","Export completed")
         
-        @QtCore.Slot()
-        def export(self):
-            script = str(self)
-            import time
-            from expLODe import open_blender_python
-            with open_blender_python("features_wf.py") as proc:
-                time.sleep(1.)
-                proc_in = proc.stdin
-                for line in script.splitlines():
-                    proc_in.write(line.encode())  
-                    proc_in.write("\n".encode())
-                    print(line)
-                    proc_in.flush()
-                    time.sleep(0.1)
-                proc_in.close()
-            QMessageBox.information(None,"Export Completed","Export completed")
-            
-            
         
-        def add(self, widget:QWidget):
-            self.center_widget.layout().addWidget(widget)
-        
-        def __str__(self):
-            return f"""
+    
+    def add(self, widget:QWidget):
+        self.center_widget.layout().addWidget(widget)
+    
+    def __str__(self):
+        return f"""
 {str(self.fileStep).format(exportStep = str(self.exportStep))}
-            """
+        """
 
-    class contentWidget(QSplitter):
-        def __init__(self):
-            super().__init__(Qt.Orientation.Horizontal)
-            self.workflows_widget = MainWidget.WorkflowWidget()
-            self.code_indicator = QLabel("")
-            self.code_indicator.setFont("Courier")
-            self.code_indicator.setProperty("type", "code")
+class ContentWidget(QSplitter):
+    def __init__(self):
+        super().__init__(Qt.Orientation.Horizontal)
+        self.workflows_widget = WorkflowWidget()
+        self.code_indicator = QLabel("")
+        self.code_indicator.setFont("Courier")
+        self.code_indicator.setProperty("type", "code")
 
-            self.addWidget(self.workflows_widget)
-            self.addWidget(self.code_indicator)
-            self.workflows_widget.code_signal.connect(self.show_code)
+        self.addWidget(self.workflows_widget)
+        self.addWidget(self.code_indicator)
+        self.workflows_widget.code_signal.connect(self.show_code)
 
-        def get_code(self):
-            return str(self.workflows_widget)
-        
-        def show_code(self):
-            self.code_indicator.setText(self.get_code())
-            self.code_indicator.setParent(None)
-            self.addWidget(self.code_indicator)
-            
+    def get_code(self):
+        return str(self.workflows_widget)
+    
+    def apply_preset(self, preset:StepsPreset):
+        self.workflows_widget.apply_preset(preset)
+        self.show_code()
+    
+    def show_code(self):
+        self.code_indicator.setText(self.get_code())
+        self.code_indicator.setParent(None)
+        self.addWidget(self.code_indicator)
+
+class MainWidget(QFrame):
+                
     def __init__(self):
         super().__init__()
         self.setLayout(QVBoxLayout(self))
-        self.contentWidget = MainWidget.contentWidget()
-        self.layout().addWidget(self.contentWidget)
-        self.get_code = self.contentWidget.get_code
+        self.ContentWidget = ContentWidget()
+        self.layout().addWidget(self.ContentWidget)
+        self.get_code = self.ContentWidget.get_code
+
+    def apply_preset(self, preset:StepsPreset):
+        self.ContentWidget.apply_preset(preset)
 
     def get_workflows_widget(self):
-        return self.contentWidget.workdlow_widget
+        return self.ContentWidget.workdlow_widget
 
 
 class QStepWidget(QFrame):
@@ -131,6 +150,9 @@ class QStepWidget(QFrame):
         # self.setObjectName("QStepWidget")
         self.setProperty("widgetclass", "QStepWidget")
         self.setAutoFillBackground(True)
+    
+    def apply_preset(self, d_struct:StepsPreset):
+        pass
 
 class EmptyStepWidget(QStepWidget):
     def __init__(self, compatible_classes:list, onconnect):
@@ -171,6 +193,15 @@ class ChooseFileStep(QStepWidget):
         self.updateFileList([])
         self.substep = None
         self.clear_substep()
+    
+    def apply_preset(self,d_struct: StepsPreset):
+        super().apply_preset(d_struct)
+        self.copy_from(d_struct.choose_file_step)
+        if self.substep is not None:
+            self.substep.apply_preset(d_struct)
+
+    def copy_from(self, cfs):
+        self.updateFileList(cfs.inFiles)
         
     def set_substep(self,substep:QStepWidget):
         prev = self.substep
@@ -222,7 +253,7 @@ class ChooseFileStep(QStepWidget):
                                                  "fbx models(*.fbx)")
         self.updateFileList(file_names)
 
-class WfFunctionStep(QStepWidget):
+class FunctionStep(QStepWidget):
     def __init__(self, wf_fun_name, wf_fun_params,formal_name:str|None = None,max_row_idx = 0, target = "og"):
         super().__init__()
         self.max_row_idx = max_row_idx
@@ -238,7 +269,6 @@ class WfFunctionStep(QStepWidget):
         self.layout().setContentsMargins(0,0,0,0)
         label = QLabel(f"{self.formal_name}")
         as_var_label = QLabel(" as variable: ")
-        self.rmbtn = QPushButton("-")
         self.varname_field = QLineEdit()
         self.target_field = QLineEdit()
         layout.addWidget(label, 0,0)
@@ -249,9 +279,6 @@ class WfFunctionStep(QStepWidget):
         self.target_field.textChanged.connect(self.on_target_name_change)
         self.varname_field.setText(self.varname)
         self.target_field.setText(self.target)
-        layout.addWidget(self.rmbtn, 0,4,Qt.AlignmentFlag.AlignRight)
-        self.removal_action = lambda: None
-        self.rmbtn.clicked.connect(lambda: self.get_removal_action()()) # abusing closures
         self.clear_next()
     
     def set_varname(self,varname):
@@ -270,10 +297,14 @@ class WfFunctionStep(QStepWidget):
     def on_varname_change(self):
         self.varname = self.varname_field.text()
     
-    def get_removal_action(self):
-        return self.removal_action
-    
-    def set_next(self, next:QStepWidget):
+    def apply_preset(self, d_struct):
+        super().apply_preset(d_struct)
+
+    def copy_from(self, other):
+        self.set_varname(other.varname)
+        self.set_target(other.target)
+
+    def set_next(self, next:QStepWidget,set_self_varname = True):
         prev =self.next
         if(prev is not None):
             self.layout().removeWidget(prev)
@@ -282,7 +313,8 @@ class WfFunctionStep(QStepWidget):
             glayout:QGridLayout = self.layout()
             glayout.addWidget(next,self.max_row_idx+1,0,1,5)
             if(hasattr(next, "target_field")):
-                next.target_field.setText(self.varname)
+                if(set_self_varname):
+                    next.target_field.setText(self.varname)
                 next.target_field.textChanged.emit(None)
             if(hasattr(next, "removal_action")):
                 next.removal_action = lambda: self.clear_next()
@@ -301,8 +333,28 @@ class WfFunctionStep(QStepWidget):
         ({fun_name} {" ".join(self.wf_fun_params)} {self.target if self.target is not None else "ALL"})) 
     {"{exportStep}" if type(self.next) is EmptyStepWidget else str(self.next)})
 """
+    
+class RemovableFunctionStep(FunctionStep):
+    def __init__(self, wf_fun_name, wf_fun_params,formal_name:str|None = None,max_row_idx = 0, target = "og"):
+        super().__init__(wf_fun_name, wf_fun_params,formal_name,max_row_idx, target)
+        layout: QGridLayout = self.layout()
+        self.removal_action = lambda: None
+        self.rmbtn = QPushButton("-")
+        self.rmbtn.clicked.connect(lambda: self.get_removal_action()()) # abusing closures
+        layout.addWidget(self.rmbtn, 0,4,Qt.AlignmentFlag.AlignRight)
+        self.clear_next()
+    
+    def get_removal_action(self):
+        return self.removal_action
+    
+    def apply_preset(self, d_struct):
+        super().apply_preset(d_struct)
+        self.copy_from(d_struct.additional_steps.pop(0))
+        if(len(d_struct.additional_steps) != 0):
+            self.set_next(d_struct.additional_steps[0],set_self_varname=False)
+            self.next.apply_preset(d_struct)
 
-class ImportStep(WfFunctionStep):
+class ImportStep(FunctionStep):
     FORMAL_NAME = "Import"
     def __init__(self):
         super().__init__("import", ["FBX"], formal_name=ImportStep.FORMAL_NAME)
@@ -310,15 +362,23 @@ class ImportStep(WfFunctionStep):
         self.target_field.setText("inFile")
         self.target_field.textChanged.emit(None)
         self.varname_field.textChanged.emit(None)
+    
+    def apply_preset(self, d_struct:StepsPreset):
+        self.copy_from(d_struct.import_step)
+        self.set_next(d_struct.additional_steps[0],set_self_varname=False)
+        self.next.apply_preset(d_struct)
+    
+    def copy_from(self, other):
+        return super().copy_from(other)
 
 
 
-class UvUnwrapStep(WfFunctionStep):
+class UvUnwrapStep(RemovableFunctionStep):
     FORMAL_NAME = "UV Unwrap"
     def __init__(self):
         super().__init__("uv-unwrap", [], formal_name=UvUnwrapStep.FORMAL_NAME)
 
-class PlanarStep(WfFunctionStep):
+class PlanarStep(RemovableFunctionStep):
     FORMAL_NAME = "Planar Decimate"
     @QtCore.Slot()
     def on_deg_change(self):
@@ -343,18 +403,21 @@ class PlanarStep(WfFunctionStep):
     def set_deg(self, deg:int|float):
         self.deg_field.setValue(deg*100)
         self.deg_field.valueChanged.emit(None)
+    
+    def copy_from(self, other):
+        super().copy_from(other)
+        self.set_deg(other.deg)
         
-class UnsubdivStep(WfFunctionStep):
+class UnsubdivStep(RemovableFunctionStep):
     FORMAL_NAME = "Unsubdivide"
     def __init__(self, iterations:int = 10):
         super().__init__("unsubdiv", [make_string(str(iterations))],max_row_idx=1, formal_name=UnsubdivStep.FORMAL_NAME)
         glayout: QGridLayout = self.layout()
         self.iteration_indicator = QLabel()
         self.iteration_field = QSlider(Qt.Orientation.Horizontal)
-        self.iteration_field.setValue(iterations)
         self.iteration_field.setRange(1,100)
         self.iteration_field.valueChanged.connect(self.iteration_changed)
-        self.iteration_changed()
+        self.set_iterations(iterations)
         glayout.addWidget(self.iteration_indicator, 1,0)
         glayout.addWidget(self.iteration_field, 1,1,1,3)
     
@@ -363,8 +426,16 @@ class UnsubdivStep(WfFunctionStep):
         self.iteration_indicator.setText(f"iterations: {self.iteration_field.value()}")
         self.iterations = self.iteration_field.value()
         self.wf_fun_params = [make_string(str(self.iterations))]
+    
+    def set_iterations(self, iterations:int):
+        self.iteration_field.setValue(iterations)
+        self.iteration_field.valueChanged.emit(None)
+    
+    def copy_from(self, other):
+        super().copy_from(other)
+        self.set_iterations(other.iterations)
 
-class CollapseStep(WfFunctionStep):
+class CollapseStep(RemovableFunctionStep):
     FORMAL_NAME="Collapse Decimate"
     def __init__(self, ratio:int|float = 1.0):
         super().__init__("collapse", [make_string(str(ratio))],max_row_idx=1,formal_name=CollapseStep.FORMAL_NAME)
@@ -372,17 +443,24 @@ class CollapseStep(WfFunctionStep):
         self.ratio_indicator = QLabel()
         self.ratio_field = QSlider(Qt.Orientation.Horizontal)
         self.ratio_field.setRange(1,100)
-        self.ratio_field.setValue(ratio*100.0)
-        self.ratio_field.valueChanged.connect(self.iteration_changed)
-        self.iteration_changed()
+        self.ratio_field.valueChanged.connect(self.ratio_changed)
         glayout.addWidget(self.ratio_indicator, 1,0)
         glayout.addWidget(self.ratio_field, 1,1,1,3)
+        self.set_ratio(ratio)
     
     @QtCore.Slot()
-    def iteration_changed(self):
+    def ratio_changed(self):
         self.ratio_indicator.setText(f"ratio: {self.ratio_field.value()/100.0}")
         self.ratio = self.ratio_field.value()/100.0
         self.wf_fun_params = [make_string(str(self.ratio))]
+    
+    def set_ratio(self, ratio:int|float):
+        self.ratio_field.setValue(ratio*100.0)
+        self.ratio_field.valueChanged.emit(None)
+    
+    def copy_from(self, other):
+        super().copy_from(other)
+        self.set_ratio(other.ratio)
 
 class ExportStep(QStepWidget):
     FORMAL_NAME = "Export"
@@ -414,21 +492,52 @@ class ExportStep(QStepWidget):
         self.export_signal = export_btn.clicked
         self.show_code_signal = show_code_btn.clicked
     
+    def set_targets(self, targets):
+        self.targets_field.setText(",".join(targets))
+        self.targets_field.textChanged.emit(None)
+    
+    def get_targets(self):
+        targets = self.targets_field.text().split(",")
+        return list(map(lambda v: v.strip(),targets))
+    
+    def set_suffix(self, suffix):
+        self.suffix_field.setText(suffix)
+        self.suffix_field.textChanged.emit(None)
+    
+    def get_suffix(self):
+        return self.suffix_field.text()
+    
+    def set_export_to(self, export_to):
+        self.export_to = os.path.abspath(export_to)
+        self.file_choose_button.setText(os.path.relpath(self.export_to))
+    
+    def get_export_to(self):
+        return self.export_to
+
+    def apply_preset(self, d_struct):
+        super().apply_preset(d_struct)
+        self.copy_form(d_struct.export_step)
+    
+    def copy_form(self, other):
+        self.set_targets(other.get_targets())
+        print(other.get_suffix())
+        self.set_suffix(other.get_suffix())
+        self.set_export_to(other.get_export_to())
+    
     @QtCore.Slot()
     def chooseFolder(self):
         folder = QFileDialog.getExistingDirectory(None, 
                                               "Choose an File to save to",
                                               self.export_to)
         
-        self.export_to = os.path.abspath(folder)
-        self.file_choose_button.setText(os.path.relpath(self.export_to))
-
+        self.set_export_to(folder)
+    
     def __str__(self):
-        targets = self.targets_field.text().split(",")
+        targets = self.get_targets()
         if(len(targets) == 1):
             targets = targets[0]        
         else:
-            targets = "(+ " + " ".join(map(lambda v: v.strip(),targets)) + ")"
+            targets = "(+ " + " ".join(targets) + ")"
 
         outFile = f"""
 (+ {repr(make_string(self.export_to))} 
@@ -454,7 +563,7 @@ class MainWindow(QMainWindow):
         self.resize(1920,1080)
 
     def import_gui_workflow(self,path):
-        steps=[]
+        preset = StepsPreset()
         content = []
         with open(path) as file:
             content = file.readlines()
@@ -472,52 +581,64 @@ class MainWindow(QMainWindow):
                 match s_content:
                     case ("def"|"define", "inFiles", inFiles):
                         s_content = make_list(())
-                        print(f"inFiles: {inFiles}")
+                        # print(f"inFiles: {inFiles}")
                         cfs = ChooseFileStep()
-                        # TODO: retrive/offload the logic, so that it selects the actual choose file step
                         cfs.updateFileList(inFiles)
-                        steps.append(inFiles)
+                        preset.choose_file_step = cfs
                     case ("def"|"define", ("fn-for-inFile", "inFile"),step):
                         s_content=step
                     case ("def"|"define", ("fn-for-inFiles", "inFiles"), step):
                         s_content = make_list(())
                     case ("with", (varname, ("import", "FBX", "inFile")), step):
                         s_content = step
-                        # TODO: retrive/offload the logic, so that it selects the actual import Step
                         i_s = ImportStep()
                         i_s.set_varname(str(varname))
-                        steps.append(i_s)
+                        preset.import_step = i_s
                     case ("with", (varname, ("uv-unwrap", target)),step):
                         s_content = step
                         uvstep =UvUnwrapStep()
                         uvstep.set_varname(str(varname))
                         uvstep.set_target(str(target))
-                        steps.append(uvstep)
+                        preset.additional_steps.append(uvstep)
                     case ("with", (varname, ("planar", ("deg->rad", deg), target)), step):
                         s_content = step
                         planarstep = PlanarStep(deg)
                         planarstep.set_varname(str(varname))
                         planarstep.set_target(str(target))
+                        preset.additional_steps.append(planarstep)
                     case ("with", (varname, ("unsubdiv", iterations, target)), step):
                         s_content = step
                         unsubdiv = UnsubdivStep(iterations)
                         unsubdiv.set_varname(str(varname))
                         unsubdiv.set_target(str(target))
+                        preset.additional_steps.append(unsubdiv)
                     case ("with", (varname, ("collapse", ratio, target)), step):
                         s_content = step
                         collapse = CollapseStep(ratio)
                         collapse.set_varname(str(varname))
                         collapse.set_target(str(target))
+                        preset.additional_steps.append(collapse)
                     case ("export", "FBX", ("+"|"add", 
-                                            export_to, 
-                                            ("filepath-filenameNoExt", "inFile"),
-                                            suffixWithExtension),
-                                            ("+", *targets)):
+                        export_to, 
+                        ("filepath-filenameNoExt", "inFile"),
+                        suffixWithExtension),
+                        ("+"|"add", *targets)):
                         s_content = make_list(())
                         suffix = suffixWithExtension[:-4]
-                        # TODO: retrive/offload the logic, so that it selects the actual export step
+                        print(suffix)
+                        # print(targets)
                         exportStep = ExportStep([str(target) for target in targets],suffix,export_to)
-                        steps.append(exportStep)
+                        preset.export_step = exportStep
+                    case ("export", "FBX", ("+"|"add", 
+                        export_to, 
+                        ("filepath-filenameNoExt", "inFile"),
+                        suffixWithExtension),
+                        target):
+                        s_content = make_list(())
+                        suffix = suffixWithExtension[:-4]
+                        print(suffix)
+                        exportStep = ExportStep(targets=[str(target)],suffix=suffix,export_to=export_to)
+                        preset.export_step = exportStep
                     case ("fn-for-inFiles", "inFiles"):
                         # skip
                         s_content = make_list(())
@@ -526,7 +647,7 @@ class MainWindow(QMainWindow):
                     case step:
                         print("unknown sexp: ",step)
                         s_content = make_list(())
-        print("\n".join([str(step) for step in steps]))    
+        self.main_widget.apply_preset(preset) 
 
     @QtCore.Slot()
     def open_gui_workflow(self):
@@ -568,7 +689,7 @@ class expLODe_gui_app(QApplication):
                 background-color: transparent;
             }
 
-            WfFunctionStep{
+            FunctionStep{
                 border: 0px;
                 border-radius: 0px;
             }

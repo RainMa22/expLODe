@@ -1,0 +1,35 @@
+
+
+(def inFiles '("/home/rain/expLODe/test.fbx"))
+(def (fn-for-inFile inFile) 
+(with 
+    (og 
+        (import FBX inFile)) 
+    
+(with 
+    (LOD0 
+        (uv-unwrap  og)) 
+    
+(with 
+    (LOD1 
+        (planar (deg->rad 10.0) LOD0)) 
+    
+(with 
+    (LOD2 
+        (unsubdiv 10 LOD0)) 
+    (export FBX 
+(+ "/home/rain/expLODe" 
+    (filepath-filenameNoExt inFile) 
+    ".combined.gui.fbx") (+ LOD0 LOD1 LOD2)))
+)
+)
+)
+)    
+(def (fn-for-inFiles inFiles)
+    (if (empty? inFiles)
+        '()
+        (cons (fn-for-inFile (first inFiles))
+            (fn-for-inFiles (rest inFiles)))))
+(fn-for-inFiles inFiles)
+        
+        
