@@ -101,7 +101,7 @@ class sexp():
 
     def __init__(self,s):
         if(type(s) is sexp):
-            self.__sexp = tuple(s.__sexp)
+            self.__sexp:tuple|int|float|make_symbol|make_string = tuple(s.__sexp)
         try:
             if(iter(s) and type(s) is not str):
                 self.__sexp = tuple(s)
@@ -123,6 +123,8 @@ class sexp():
         return self.__repr__()
     
     def __repr__(self):
+        if(type(self.content()) is not tuple):
+            return "'" + repr(self.content())
         content_repr = "(" + " ".join([repr(item) for item in self.content()]) + ")"
         if(type(self.content())) is tuple:
             return "'" + content_repr

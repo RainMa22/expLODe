@@ -90,7 +90,7 @@ def main():
     load_config()
     args = parse_args()
     if args["gui"]:
-        from gui.expLODe_gui import expLODe_gui_app,mainWidget
+        from gui.expLODe_gui import expLODe_gui_app,MainWidget
         app = expLODe_gui_app()
         sys.exit(app.exec())
     else:
