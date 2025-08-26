@@ -11,8 +11,8 @@
 - [x] LOD lvl 2 (Unsubdivide 5 interations)
 
 ### v1 features
-- [ ] customizability
-- [ ] GUI as an option
+- [x] customizability
+- [x] GUI as an option
 - [ ] testing
 
 ### future features
