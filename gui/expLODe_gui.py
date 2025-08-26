@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt
 import os
 from persistence.expLODe_config import get_config,write_config, check_version
 from core.sexp import make_string, make_list, make_symbol,sexp
+from globals import expLODe_root as proj_root
 
 class StepsPreset:
     def __init__(self):
@@ -674,7 +675,6 @@ class MainWindow(QMainWindow):
 class expLODe_gui_app(QApplication):
     def __init__(self):
         super().__init__([])
-        proj_root = os.path.abspath(".")
         self.window = MainWindow()
         self.window.import_gui_workflow(os.path.join(proj_root, "default.gui.wf"), show_code=False)
         self.config = get_config()

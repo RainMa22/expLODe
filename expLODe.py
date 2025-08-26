@@ -4,17 +4,17 @@ import argparse
 import os
 from core.sexp import make_list, make_string, make_symbol
 from persistence.expLODe_config import get_config, load_config, check_version
+from globals import expLODe_root as proj_root
 import subprocess
 
 def parse_args():
-    parent = os.path.abspath(os.path.dirname(__file__))
     parser = argparse.ArgumentParser(prog="expLODe",
                                      usage="-i (file1.fbx)[,(file2.fbx)] [-o (out folder)] [-s (scriptname).(py|wf)]",
                                      description="a Python3 LOD script using blender")
     parser.add_argument('-i', '--inFiles', default="")
     parser.add_argument('-o', '--outFolder')
     parser.add_argument('--gui',action="store_true", default=False)
-    parser.add_argument('-s', '--script', default=os.path.join(parent, "default.wf"))
+    parser.add_argument('-s', '--script', default=os.path.join(proj_root, "default.wf"))
     
     args = parser.parse_args()
     if(args.inFiles == ""):
@@ -37,7 +37,7 @@ def parse_args():
         script = args.script
         wf_file = None
     elif(args.script.lower().endswith(".wf")):
-        script = os.path.join(parent, "features_wf.py")
+        script = os.path.join(proj_root, "features_wf.py")
         wf_file = args.script
     
     if (inFiles is None):

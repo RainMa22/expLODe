@@ -4,6 +4,8 @@ import os
 import shutil
 import subprocess
 import sys
+from globals import expLODe_root as proj_root
+from os.path import join as path_join
 
 
 __config: dict = {}
@@ -11,12 +13,12 @@ __config: dict = {}
 
 def load_config():
     global __config
-    parent = os.path.abspath(".")
-    if (not os.path.exists(parent+os.sep+"config.json")):
-        shutil.copyfile(parent+os.sep+"config.default.json",
-                        parent+os.sep+"config.json")
+    config_json_path = path_join(proj_root, "config.json")
+    default_json_path = path_join(proj_root, "config.default.json")
+    if (not os.path.exists(config_json_path)):
+        shutil.copyfile(default_json_path, config_json_path)
 
-    with open(parent+os.sep+"config.json", "r") as file:
+    with open(config_json_path, "r") as file:
         __config = json.loads(file.read())
 
     blender_command = __config.get("expLODe.blenderCmd")
@@ -44,9 +46,7 @@ def get_config():
 def write_config(config: dict):
     global __config
     __config = config
-    parent = os.path.dirname(__file__)
-    parent = os.path.abspath(parent)
-    with open(parent+os.sep+"config.json", "w") as file:
+    with open(path_join(proj_root, "config.json"), "w") as file:
         file.write(json.dumps(config))
 
 def check_version():
