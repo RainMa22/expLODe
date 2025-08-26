@@ -1,6 +1,6 @@
 
 
-(def inFiles '("/home/rain/expLODe/test.fbx"))
+(def inFiles '())
 (def (fn-for-inFile inFile) 
 (with 
     (og 

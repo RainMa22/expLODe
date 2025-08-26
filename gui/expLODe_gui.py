@@ -118,9 +118,10 @@ class ContentWidget(QSplitter):
     def get_code(self):
         return str(self.workflows_widget)
     
-    def apply_preset(self, preset:StepsPreset):
+    def apply_preset(self, preset:StepsPreset, show_code=False):
         self.workflows_widget.apply_preset(preset)
-        self.show_code()
+        if(show_code):
+            self.show_code()
     
     def show_code(self):
         self.code_indicator.setText(self.get_code())
@@ -136,8 +137,8 @@ class MainWidget(QFrame):
         self.layout().addWidget(self.ContentWidget)
         self.get_code = self.ContentWidget.get_code
 
-    def apply_preset(self, preset:StepsPreset):
-        self.ContentWidget.apply_preset(preset)
+    def apply_preset(self, preset:StepsPreset, show_code=False):
+        self.ContentWidget.apply_preset(preset, show_code = show_code)
 
     def get_workflows_widget(self):
         return self.ContentWidget.workdlow_widget
@@ -520,7 +521,7 @@ class ExportStep(QStepWidget):
     
     def copy_form(self, other):
         self.set_targets(other.get_targets())
-        print(other.get_suffix())
+        # print(other.get_suffix())
         self.set_suffix(other.get_suffix())
         self.set_export_to(other.get_export_to())
     
@@ -562,7 +563,7 @@ class MainWindow(QMainWindow):
         self.menuBar.save_signal.connect(self.save_gui_workflow)
         self.resize(1920,1080)
 
-    def import_gui_workflow(self,path):
+    def import_gui_workflow(self,path,show_code=True):
         preset = StepsPreset()
         content = []
         with open(path) as file:
@@ -625,7 +626,6 @@ class MainWindow(QMainWindow):
                         ("+"|"add", *targets)):
                         s_content = make_list(())
                         suffix = suffixWithExtension[:-4]
-                        print(suffix)
                         # print(targets)
                         exportStep = ExportStep([str(target) for target in targets],suffix,export_to)
                         preset.export_step = exportStep
@@ -636,7 +636,7 @@ class MainWindow(QMainWindow):
                         target):
                         s_content = make_list(())
                         suffix = suffixWithExtension[:-4]
-                        print(suffix)
+                        # print(suffix)
                         exportStep = ExportStep(targets=[str(target)],suffix=suffix,export_to=export_to)
                         preset.export_step = exportStep
                     case ("fn-for-inFiles", "inFiles"):
@@ -647,7 +647,7 @@ class MainWindow(QMainWindow):
                     case step:
                         print("unknown sexp: ",step)
                         s_content = make_list(())
-        self.main_widget.apply_preset(preset) 
+        self.main_widget.apply_preset(preset, show_code=show_code) 
 
     @QtCore.Slot()
     def open_gui_workflow(self):
@@ -670,7 +670,10 @@ class MainWindow(QMainWindow):
 class expLODe_gui_app(QApplication):
     def __init__(self):
         super().__init__([])
+        parent = os.path.dirname(__file__)
+        proj_root = os.path.dirname(parent)
         self.window = MainWindow()
+        self.window.import_gui_workflow(os.path.join(proj_root, "default.gui.wf"), show_code=False)
         self.config = get_config()
         if(self.config.get("expLODe.blenderCmd", "") == "" or not check_version()):
             QMessageBox.information(None, "Notification", "Blender Not Detected! Please Select a Valid Blender >=4.2, <5 Installation.")
