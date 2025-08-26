@@ -17,6 +17,15 @@ def parse_args():
     parser.add_argument('-s', '--script', default=os.path.join(parent, "default.wf"))
     
     args = parser.parse_args()
+    if(args.inFiles == ""):
+        print("NO INFILE SPECIFIED! Using GUI...")
+        args.gui = True
+        return {"inFiles": [], 
+        "outFolder": "", 
+        "script": "",
+        "wf_file": "",
+        "gui": args.gui}
+
     inFiles: list[str] = args.inFiles.split(",")
     outFolder: str = args.outFolder
     if outFolder is None:
