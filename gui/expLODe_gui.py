@@ -3,8 +3,8 @@ from PySide6.QtWidgets import *
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
 import os
-from expLODe_config import get_config,write_config, check_version
-from sexp import make_string, make_list, make_symbol,sexp
+from persistence.expLODe_config import get_config,write_config, check_version
+from core.sexp import make_string, make_list, make_symbol,sexp
 
 class StepsPreset:
     def __init__(self):
@@ -85,7 +85,7 @@ class WorkflowWidget(QScrollArea):
         script = str(self)
         import time
         from expLODe import open_blender_python
-        with open_blender_python("features_wf.py") as proc:
+        with open_blender_python("core/features_wf.py") as proc:
             time.sleep(1.)
             proc_in = proc.stdin
             for line in script.splitlines():
@@ -674,8 +674,7 @@ class MainWindow(QMainWindow):
 class expLODe_gui_app(QApplication):
     def __init__(self):
         super().__init__([])
-        parent = os.path.dirname(__file__)
-        proj_root = os.path.dirname(parent)
+        proj_root = os.path.abspath(".")
         self.window = MainWindow()
         self.window.import_gui_workflow(os.path.join(proj_root, "default.gui.wf"), show_code=False)
         self.config = get_config()

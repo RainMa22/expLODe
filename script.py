@@ -3,7 +3,7 @@ import os,sys
 sys.path.append(os.path.abspath("."))
 
 # import all function from features
-from features import *
+from core.features import *
 
 for inFile in inFiles:
     new_scene("fbxOG")

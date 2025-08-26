@@ -2,8 +2,8 @@
 import sys
 import argparse
 import os
-from sexp import make_list, make_string, make_symbol
-from expLODe_config import get_config, load_config, check_version
+from core.sexp import make_list, make_string, make_symbol
+from persistence.expLODe_config import get_config, load_config, check_version
 import subprocess
 
 def parse_args():

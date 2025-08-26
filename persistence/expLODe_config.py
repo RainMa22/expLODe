@@ -11,8 +11,7 @@ __config: dict = {}
 
 def load_config():
     global __config
-    parent = os.path.dirname(__file__)
-    parent = os.path.abspath(parent)
+    parent = os.path.abspath(".")
     if (not os.path.exists(parent+os.sep+"config.json")):
         shutil.copyfile(parent+os.sep+"config.default.json",
                         parent+os.sep+"config.json")
