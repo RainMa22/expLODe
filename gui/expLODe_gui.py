@@ -78,6 +78,10 @@ class WorkflowWidget(QScrollArea):
 
     @QtCore.Slot()
     def export(self):
+        if(len(self.fileStep.inFiles) == 0):
+            QMessageBox.warning(None,"WARNING","No Input File Specified! \n" \
+                                "Please Specify at least 1 Input File")
+            return
         script = str(self)
         import time
         from expLODe import open_blender_python
