@@ -85,8 +85,11 @@ class WorkflowWidget(QScrollArea):
             return
         script = str(self)
         import time
-        from expLODe import open_blender_python
-        with open_blender_python("core/features_wf.py") as proc:
+        from bio.blenderio import open_blender_python
+        from persistence.expLODe_config import get_config
+        blendercmd = get_config().get("expLODe.blenderCmd")
+        features_wf_path = os.path.join(proj_root, "core/features_wf.py")
+        with open_blender_python(blendercmd, features_wf_path) as proc:
             time.sleep(1.)
             proc_in = proc.stdin
             for line in script.splitlines():
@@ -98,8 +101,6 @@ class WorkflowWidget(QScrollArea):
             proc_in.close()
         QMessageBox.information(None,"Export Completed","Export completed")
         
-        
-    
     def add(self, widget:QWidget):
         self.center_widget.layout().addWidget(widget)
     

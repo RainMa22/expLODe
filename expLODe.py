@@ -5,7 +5,7 @@ import os
 from core.sexp import make_list, make_string, make_symbol
 from persistence.expLODe_config import get_config, load_config, check_version
 from globals import expLODe_root as proj_root
-import subprocess
+from bio.blenderio import open_blender_console, open_blender_python
 
 def parse_args():
     parser = argparse.ArgumentParser(prog="expLODe",
@@ -76,28 +76,12 @@ def parse_args():
             "wf_file": wf_file,
             "gui": args.gui}
 
-def open_blender_console():
-    blender = get_config().get("expLODe.blenderCmd")
-    return subprocess.Popen([blender, 
-                           "-b", 
-                           "--python-console"],
-                          stdin=subprocess.PIPE,
-                          stderr=subprocess.STDOUT,
-                          stdout=None)
 
-def open_blender_python(python_file_path:str):
-    blender = get_config().get("expLODe.blenderCmd")
-    return subprocess.Popen([blender, 
-                           "-b", 
-                           "--python",
-                           python_file_path],
-                          stdin=subprocess.PIPE,
-                        #   stderr=subprocess.STDOUT,
-                          stdout=None)
 
 def main():
     load_config()
     args = parse_args()
+    blendercmd = get_config().get("expLODe.blenderCmd")
     if args["gui"]:
         from gui.expLODe_gui import expLODe_gui_app,MainWidget
         app = expLODe_gui_app()
@@ -108,7 +92,7 @@ def main():
         script = args.pop("script")
         wf_file = args.pop("wf_file")
         if(wf_file is not None):
-            with open_blender_python(script) as proc:
+            with open_blender_python(blendercmd,script) as proc:
                 proc_in = proc.stdin
                 for key,val in args.items():
                     proc_in.write(f"(def {key} {repr(val)})\n".encode())
@@ -126,7 +110,7 @@ def main():
                 input()
                 proc_in.close()
         else:
-            with open_blender_console() as proc:
+            with open_blender_console(blendercmd) as proc:
                 proc_in = proc.stdin
                 for key,val in args.items():
                     proc_in.write(f"{key}={repr(val)}\n".encode())
