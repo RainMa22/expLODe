@@ -11,7 +11,7 @@ for inFile in inFiles:
     importFBX(f"{inFile}")
     # remove_scene("Scene")
     select_all()
-    uv_unwrap(get_selected())
+    smart_uv_unwrap(get_selected())
     # LOD1: planar 10deg
     select_all()
     add_suffix("OG")

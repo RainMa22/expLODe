@@ -137,9 +137,9 @@ def interp_workflow(env: dict, wf, interp_override=None):
         case ("export", "FBX", path, target):
             return tuple(exportFBX(interp(path), interp(target)))
         case ("uv-unwrap", "ALL"):
-            return tuple(uv_unwrap())
+            return tuple(smart_uv_unwrap())
         case ("uv-unwrap", objects):
-            return tuple(uv_unwrap(interp(objects)))
+            return tuple(smart_uv_unwrap(interp(objects)))
         case ("unsubdiv", iterations):
             return tuple(unsubdiv(interp(iterations), inplace=False))
         case ("unsubdiv", iterations, target):

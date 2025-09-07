@@ -124,7 +124,3 @@ def main():
                 proc_in.flush()
                 input()
                 proc_in.close()
-
-
-if __name__ == "__main__":
-    main()

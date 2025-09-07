@@ -2,3 +2,4 @@ config.json
 *.fbx
 __pycache__/*
 */__pycache__/*
+**/__pycache__/*

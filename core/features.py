@@ -2,7 +2,8 @@ import bpy
 import math
 import random
 import re
-
+import typing
+from bpy.types import Object as bpyObject
 
 def new_scene(scene_name = None):
     id = scene_name if scene_name is not None else str(random.randbytes(8))
@@ -74,19 +75,30 @@ def importFBX(filepath):
     imported = [obj for obj in bpy.context.selected_objects]
     return imported
 
-def exportFBX(filepath, target=None):
-    target = target if target is not None else bpy.context.scene.objects
+def exportFBX(filepath, targets=None):
+    targets = targets if targets is not None else bpy.context.scene.objects
     deselect_all()
-    for obj in target:
+    for obj in targets:
         obj.select_set(True)
     bpy.ops.export_scene.fbx(filepath=filepath,
-                             axis_forward='Z', 
+                             axis_forward='-Z', 
                              axis_up='Y',
                              use_selection=True,
-                             apply_scale_options='FBX_SCALE_UNITS')
+                             object_types= set(("EMPTY", "CAMERA", "LIGHT", "ARMATURE", "MESH", "OTHER")),
+                             apply_scale_options='FBX_SCALE_ALL')
     return filepath
 
-def uv_unwrap(target:bpy.types.SceneObjects=bpy.context.selected_objects):
+def smart_uv_unwrap(target:bpy.types.SceneObjects=None, 
+              context: int|str|None=None, undo = None,     
+              angle_limit: float | None = 1.15192,
+              margin_method: typing.Literal["SCALED", "ADD", "FRACTION"] | None = "SCALED",
+              rotate_method: typing.Literal["AXIS_ALIGNED", "AXIS_ALIGNED_X", "AXIS_ALIGNED_Y"]
+              | None = "AXIS_ALIGNED_Y",
+              island_margin: float | None = 0.01,
+              area_weight: float | None = 0.0,
+              correct_aspect: bool | None = True,
+              scale_to_bounds: bool | None = False):
+    target = target if target is not None else get_selected()
     deselect_all()
     changed = []
     for obj in target:
@@ -94,7 +106,16 @@ def uv_unwrap(target:bpy.types.SceneObjects=bpy.context.selected_objects):
         obj.select_set(True)
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.uv.smart_project(island_margin=0.01)
+        bpy.ops.uv.smart_project(context, 
+                                 undo, 
+                                 angle_limit, 
+                                 margin_method,
+                                 rotate_method,
+                                 island_margin,
+                                 area_weight,
+                                 correct_aspect,
+                                 scale_to_bounds
+                                 )
         bpy.ops.object.mode_set(mode='OBJECT')
         obj.select_set(False)
         changed.append(obj)
@@ -167,3 +188,88 @@ def lvl_one_lod_to_all():
     
 def lvl_two_lod_to_all():
     return lvl_two_lod(bpy.context.scene.objects)
+
+def layer_collection_of(collection: bpy.types.Collection):
+    top_layer = bpy.context.view_layer.layer_collection
+    exploration_stack = [top_layer]
+    while(not len(exploration_stack) == 0):
+        layer = exploration_stack.pop()
+        if(layer.collection != collection):
+            exploration_stack += layer.children
+        else:
+            return layer
+
+def hide(object: bpyObject):
+    hidden = []
+    if(not object.hide_get()):
+        hidden.append(object)
+        object.hide_set(True)
+    return hidden    
+
+def unhide(object: bpyObject, unhide_parent = False, exclude = [].copy()):
+    if(object in exclude):
+        return exclude
+    print(f"object {object} is {'not hidden' if not object.hide_get() else 'hidden'}")
+    if(object.hide_get()):
+        exclude.append(object)
+        object.hide_set(False)
+    if(unhide_parent):
+        while(object.parent):
+            if(object in exclude):
+                continue
+            object = object.parent
+            print(f"object {object} is {'not hidden' if not object.hide_get() else 'hidden'}")
+            if(object.hide_get()):
+                exclude.append(object)
+                object.hide_set(False)
+    return exclude
+
+def make_invis(object: bpyObject):
+    invised = []
+    if(not object.hide_viewport):
+        invised.append(object)
+        object.hide_viewport = True
+    return invised    
+
+def make_visible(object: bpyObject, make_visible_parent = False, exclude = [].copy()):
+    if object in exclude:
+        return exclude
+    print(f"object {object} is {'visible' if not object.hide_viewport else 'invisible'}")
+    if(object.hide_viewport):
+        exclude.append(object)
+        object.hide_viewport = False
+    if(make_visible_parent):
+        for collection in object.users_collection:
+            if collection in exclude:
+                continue
+            print(f"collection {collection} is {'visible' if not collection.hide_viewport else 'invisible'}")
+            if(collection.hide_viewport):
+                exclude.append(collection)
+                collection.hide_viewport = False
+            layer_collection = layer_collection_of(collection)
+            if layer_collection in exclude:
+                continue
+            print(f"layer collection of {collection} is {'visible' if not layer_collection.hide_viewport else 'invisible'}")
+            if(layer_collection.hide_viewport):
+                exclude.append(layer_collection)
+                layer_collection.hide_viewport = False
+        while(object.parent):
+            object = object.parent
+            print(f"object {object} is {'visible' if not object.hide_viewport else 'invisible'}")
+            if(object.hide_viewport):
+                exclude.append(object)
+                object.hide_viewport = False
+            for collection in object.users_collection:
+                if collection in exclude:
+                    continue
+                print(f"collection {collection} is {'visible' if not collection.hide_viewport else 'invisible'}")
+                if(collection.hide_viewport):
+                    exclude.append(collection)
+                    collection.hide_viewport = False
+                layer_collection = layer_collection_of(collection)
+                if layer_collection in exclude:
+                    continue
+                if(layer_collection.hide_viewport):
+                    exclude.append(layer_collection)
+                    layer_collection.hide_viewport = False
+    return exclude
