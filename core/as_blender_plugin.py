@@ -1,12 +1,75 @@
 import bpy
 from bpy_extras.io_utils import ExportHelper
-from bpy.props import StringProperty, BoolProperty, EnumProperty
+from bpy.props import CollectionProperty,StringProperty, BoolProperty, EnumProperty, IntProperty, FloatProperty
 from bpy.types import Operator 
-import math,mathutils
+import math, mathutils
+import sys
 
 from .features import *
 
-class expLODePlugin(Operator, ExportHelper):
+
+class LODConfig(bpy.types.PropertyGroup):
+    name: StringProperty(default="LOD",
+                         description="name of the LOD and the suffix of the LOD mesh on export")
+
+    def set_name(self,newname):
+        if(self.__requested__name):
+            try:
+                LODConfig.nameAssigner.release_name(self.name)
+            except Exception as e:
+                print("Encountered Exception whilst trying to release oldname:", self.name, e, file=sys.stderr) #ignored as it is minor issue
+        self.__requested__name = False
+        self.name = newname
+    
+    def __str__(self):
+        return self.name
+
+    def apply_to_objs(self, objs: typing.Iterable[bpyObject], inplace=True):
+        raise Exception("Not Implemented Yet!")
+
+class PlanarLODConfig(LODConfig):
+    angle_limit: FloatProperty(name = "Angle Limit",
+                               description = "Planar Modifier Angle Limit",
+                               min=0,
+                               max=math.pi,
+                               default=math.radians(10.),
+                               subtype="ANGLE")
+
+    def apply_to_objs(self, objs: typing.Iterable[bpyObject], inplace=True):
+        return planar_decimate(self.angle_limit, objs, inplace, self.name)
+    
+    
+class UnsubdivideLODConfig(LODConfig):
+    iterations: IntProperty(name = "Iterations", default=10,
+                            min=0, max=32767)
+
+    def apply_to_objs(self, objs, inplace=True):
+        return unsubdiv(self.iterations, objs, inplace, self.name)
+
+class CollapseLODConfig(LODConfig):
+    ratio: FloatProperty(name = "ratio",
+                         description= "collapse ratio",
+                         default=0.95,
+                         min = 0.,
+                         max = 1.0)
+
+    def apply_to_objs(self, objs, inplace=True):
+        collapse(self.ratio,objs, inplace, self.name)
+
+class EXPLODE_UL_loLODConfig(bpy.types.UIList):
+    bl_idname = "EXPLODE_UL_loLODConfig"
+    def draw_item(self, context, layout, data, item, icon, active_data, active_property, *, index = 0, flt_flag = 0):
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            if item:
+                layout.prop(item, "name", text="", emboss=False, icon_value=icon)
+            else:
+                layout.label(text="None", translate=False, icon_value=icon)
+            # 'GRID' layout type should be as compact as possible (typically a single icon!).
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.label(text="", icon_value=icon)
+
+class expLODeFBXExporter(Operator, ExportHelper):
     """
     offers Unity-compatible FBX exports with LOD options 
     """
@@ -20,32 +83,32 @@ class expLODePlugin(Operator, ExportHelper):
         default="*.fbx",
         options={'HIDDEN'},
         maxlen=255,  # Max internal buffer length, longer would be clamped.
-    ) # pyright: ignore[reportInvalidTypeForm]
+    )
 
     active_collection: BoolProperty(
         name="Active Collection Only",
         description="Export objects in the active collection only (and its children). ",
         default=False,
-    ) # pyright: ignore[reportInvalidTypeForm]
+    )
 
     selected_objects: BoolProperty(
         name="Selected Objects Only",
         description="Export selected objects only. ",
         default=False,
-    ) # pyright: ignore[reportInvalidTypeForm]
+    )
 
     deform_bones: BoolProperty(
         name="Only Deform Bones",
         description="Only write deforming bones (and non-deforming ones when they have deforming children)",
         default=False,
-    ) # pyright: ignore[reportInvalidTypeForm]
+    )
 
     leaf_bones: BoolProperty(
         name="Add Leaf Bones",
         description="Append a final bone to the end of each chain to specify last bone length "
         "(use this when you intend to edit the armature from exported data)",
         default=False,
-    ) # pyright: ignore[reportInvalidTypeForm]
+    )
 
     triangulate_faces: BoolProperty(
         name="Triangulate Faces",
@@ -53,7 +116,7 @@ class expLODePlugin(Operator, ExportHelper):
         "This is necessary for exporting tangents in meshes with N-gons. " \
         "Otherwise Unity will show a warning when importing tangents in these meshes",
         default=False,
-    ) # pyright: ignore[reportInvalidTypeForm]
+    )
 
     primary_bone_axis: EnumProperty(
         name="Primary",
@@ -65,7 +128,7 @@ class expLODePlugin(Operator, ExportHelper):
                 ('-Z', "-Z Axis", ""),
         ),
         default='Y',
-    ) # pyright: ignore[reportInvalidTypeForm]
+    )
 
     secondary_bone_axis: EnumProperty(
         name="Secondary",
@@ -77,7 +140,7 @@ class expLODePlugin(Operator, ExportHelper):
                 ('-Z', "-Z Axis", ""),
         ),
         default='X',
-    ) # pyright: ignore[reportInvalidTypeForm]
+    )
 
     tangent_space: BoolProperty(
         name="Export tangents",
@@ -85,9 +148,9 @@ class expLODePlugin(Operator, ExportHelper):
         "together with normal they form the tangent space (tris/quads only). " \
         "Meshes with N-gons won't export tangents unless the option Triangulate Faces is enabled",
         default=False,
-    ) # pyright: ignore[reportInvalidTypeForm]
+    )
 
-    
+
 
     def draw(self, context):
         layout = self.layout
@@ -116,6 +179,16 @@ class expLODePlugin(Operator, ExportHelper):
         col.alignment = 'RIGHT'
         col.label(text = "Secondary")
         split.column().prop(self, "secondary_bone_axis", text="")
+        
+        layout.separator()
+        row = layout.row()
+        icon = 'TRIA_DOWN' if context.scene.expLODe_export_lod_panel_open else 'TRIA_RIGHT'
+        row.label(text="LODs:")
+        row.prop(context.scene, "expLODe_export_lod_panel_open", icon=icon, icon_only=True)
+        if context.scene.expLODe_export_lod_panel_open:
+            layout.row().template_list(EXPLODE_UL_loLODConfig.bl_idname,"LOLOD_full",context.scene, "explode_LODs",context.scene,"explode_LODIndex")
+            layout.row().template_list(EXPLODE_UL_loLODConfig.bl_idname,"LOLOD_compact",context.scene, "explode_LODs",context.scene,"explode_LODIndex", type="COMPACT")
+
         # return super().draw(context)
  
     def execute(self, context):
@@ -169,13 +242,47 @@ class expLODePlugin(Operator, ExportHelper):
         return {"FINISHED"}
 
 def menu_func_export(self, context):
-    self.layout.operator(expLODePlugin.bl_idname, text="FBX (Unity-compatible, with LOD)")
+    self.layout.operator(expLODeFBXExporter.bl_idname, text="FBX (Unity-compatible, with LOD)")
+
+
+# class MY_OT_add_item(bpy.types.Operator):
+#     bl_idname = "my.add_item"
+#     bl_label = "Add Item"
+
+#     def execute(self, context):
+#         item = context.scene.my_collection.add()
+#         item.name = "New Item"
+#         return {'FINISHED'}
+
+# class MY_OT_remove_item(bpy.types.Operator):
+#     bl_idname = "my.remove_item"
+#     bl_label = "Remove Item"
+
+#     def execute(self, context):
+#         index = context.scene.my_collection_index
+#         if index >= 0 and index < len(context.scene.my_collection):
+#             context.scene.my_collection.remove(index)
+#             context.scene.my_collection_index = min(index, len(context.scene.my_collection) - 1)
+#         return {'FINISHED'}
 
 def register():
-    bpy.utils.register_class(expLODePlugin)
+    bpy.utils.register_class(expLODeFBXExporter)
+    bpy.utils.register_class(EXPLODE_UL_loLODConfig)
+    bpy.utils.register_class(LODConfig)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
+    bpy.types.Scene.expLODe_export_lod_panel_open = BoolProperty(
+        default=False
+    )
+    bpy.types.Scene.explode_LODs = CollectionProperty(type=LODConfig, 
+                              name="LODs",
+                              description="Additional LOD meshes to generate and export",
+                              )
+    
+    bpy.types.Scene.explode_LODIndex = IntProperty()
 
 
 def unregister():
-    bpy.utils.unregister_class(expLODePlugin)
+    bpy.utils.unregister_class(expLODeFBXExporter)
+    bpy.utils.unregister_class(EXPLODE_UL_loLODConfig)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
+    del bpy.types.Scene.expLODe_export_lod_panel_open

@@ -127,9 +127,9 @@ def lvl_one_lod(target:bpy.types.SceneObjects = None):
 def lvl_two_lod(target: bpy.types.SceneObjects = None):
     return unsubdiv(10, target)
 
-def unsubdiv(iterations: int, target:bpy.types.SceneObjects = None, inplace = True):
+def unsubdiv(iterations: int, target:bpy.types.SceneObjects = None, inplace = True, name_override:str = None):
     target = target if target is not None else get_selected()
-    fx_name = f"unsubdiv_{iterations}"
+    fx_name = f"unsubdiv_{iterations}" if name_override is None else name_override
     if(not inplace):
         select_target(target)
         target = dup_and_rename_suffix(new_suffix=fx_name)
@@ -145,9 +145,9 @@ def unsubdiv(iterations: int, target:bpy.types.SceneObjects = None, inplace = Tr
         changed.append(obj)
     return changed
 
-def planar_decimate(angle_limit = 10.0/180*math.pi, target = None, inplace=True):
+def planar_decimate(angle_limit = math.radians(10.), target = None, inplace=True, name_override:str = None):
     target = target if target is not None else get_selected()
-    fx_name = f"planar_{int(angle_limit/math.pi*180)}"
+    fx_name = f"planar_{int(angle_limit/math.pi*180)}" if name_override is None else name_override
     if(not inplace):
         select_target(target)
         target = dup_and_rename_suffix(new_suffix=fx_name)
@@ -164,9 +164,9 @@ def planar_decimate(angle_limit = 10.0/180*math.pi, target = None, inplace=True)
     return changed
 
 
-def collapse(ratio: float = 0.95, target = None, inplace=True):
+def collapse(ratio: float = 0.95, target = None, inplace=True, name_override:str = None):
     target = target if target is not None else get_selected()
-    fx_name = f"collapse_{ratio:.02f}"
+    fx_name = f"collapse_{ratio:.02f}" if name_override is None else name_override
     if(not inplace):
         select_target(target)
         target = dup_and_rename_suffix(new_suffix=fx_name)
