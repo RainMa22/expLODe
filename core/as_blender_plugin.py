@@ -11,50 +11,37 @@ from .features import *
 class LODConfig(bpy.types.PropertyGroup):
     name: StringProperty(default="LOD",
                          description="name of the LOD and the suffix of the LOD mesh on export")
-
-    def set_name(self,newname):
-        if(self.__requested__name):
-            try:
-                LODConfig.nameAssigner.release_name(self.name)
-            except Exception as e:
-                print("Encountered Exception whilst trying to release oldname:", self.name, e, file=sys.stderr) #ignored as it is minor issue
-        self.__requested__name = False
-        self.name = newname
     
-    def __str__(self):
-        return self.name
-
-    def apply_to_objs(self, objs: typing.Iterable[bpyObject], inplace=True):
-        raise Exception("Not Implemented Yet!")
-
-class PlanarLODConfig(LODConfig):
+    type: EnumProperty(name="type",
+        items=(("Planar", "Planar Decimate",""),
+            ("Unsubdiv", "Unsubdivide Decimate",""),
+            ("Collapse", "Collapse Decimate","")),
+            default="Planar")
+    # Planar only
     angle_limit: FloatProperty(name = "Angle Limit",
-                               description = "Planar Modifier Angle Limit",
-                               min=0,
-                               max=math.pi,
-                               default=math.radians(10.),
-                               subtype="ANGLE")
-
-    def apply_to_objs(self, objs: typing.Iterable[bpyObject], inplace=True):
-        return planar_decimate(self.angle_limit, objs, inplace, self.name)
-    
-    
-class UnsubdivideLODConfig(LODConfig):
+                            description = "Planar Modifier Angle Limit",
+                            min=0,
+                            max=math.pi,
+                            default=math.radians(10.),
+                            subtype="ANGLE")
+    # Iterations
     iterations: IntProperty(name = "Iterations", default=10,
-                            min=0, max=32767)
-
-    def apply_to_objs(self, objs, inplace=True):
-        return unsubdiv(self.iterations, objs, inplace, self.name)
-
-class CollapseLODConfig(LODConfig):
+                        min=0, max=32767)
+    # collapse only
     ratio: FloatProperty(name = "ratio",
                          description= "collapse ratio",
                          default=0.95,
                          min = 0.,
                          max = 1.0)
 
-    def apply_to_objs(self, objs, inplace=True):
-        collapse(self.ratio,objs, inplace, self.name)
+    def apply_to_objs(self, objs: typing.Iterable[bpyObject], inplace=True):
+        match self.type:
+            case "Planar":
+                return planar_decimate(self.angle_limit, objs, inplace, self.name)
+            case "Unsubdiv":
+                return unsubdiv(self.iterations, objs, inplace, self.name)
+            case "Collapse":
+                collapse(self.ratio,objs, inplace, self.name)
 
 class EXPLODE_UL_loLODConfig(bpy.types.UIList):
     bl_idname = "EXPLODE_UL_loLODConfig"
@@ -186,8 +173,13 @@ class expLODeFBXExporter(Operator, ExportHelper):
         row.label(text="LODs:")
         row.prop(context.scene, "expLODe_export_lod_panel_open", icon=icon, icon_only=True)
         if context.scene.expLODe_export_lod_panel_open:
-            layout.row().template_list(EXPLODE_UL_loLODConfig.bl_idname,"LOLOD_full",context.scene, "explode_LODs",context.scene,"explode_LODIndex")
-            layout.row().template_list(EXPLODE_UL_loLODConfig.bl_idname,"LOLOD_compact",context.scene, "explode_LODs",context.scene,"explode_LODIndex", type="COMPACT")
+            row = layout.row()
+            split = row.split()
+            split.template_list(EXPLODE_UL_loLODConfig.bl_idname,"LOLOD_full",context.scene, "explode_LODs",context.scene,"explode_LODIndex")
+            # layout.row().template_list(EXPLODE_UL_loLODConfig.bl_idname,"LOLOD_compact",context.scene, "explode_LODs",context.scene,"explode_LODIndex", type="COMPACT")
+            column = row.column()
+            column.operator(EXPLODE_OT_add_item.bl_idname,icon="ADD",text="")
+            column.operator(EXPLODE_OT_remove_item.bl_idname,icon="REMOVE",text="")
 
         # return super().draw(context)
  
@@ -245,29 +237,31 @@ def menu_func_export(self, context):
     self.layout.operator(expLODeFBXExporter.bl_idname, text="FBX (Unity-compatible, with LOD)")
 
 
-# class MY_OT_add_item(bpy.types.Operator):
-#     bl_idname = "my.add_item"
-#     bl_label = "Add Item"
+class EXPLODE_OT_add_item(bpy.types.Operator):
+    bl_idname = "export_scene.explode_add_item"
+    bl_label = "Add Item"
 
-#     def execute(self, context):
-#         item = context.scene.my_collection.add()
-#         item.name = "New Item"
-#         return {'FINISHED'}
+    def execute(self, context):
+        item:LODConfig = context.scene.explode_LODs.add()
+        item.name = "LOD"
+        return {'FINISHED'}
 
-# class MY_OT_remove_item(bpy.types.Operator):
-#     bl_idname = "my.remove_item"
-#     bl_label = "Remove Item"
+class EXPLODE_OT_remove_item(bpy.types.Operator):
+    bl_idname = "export_scene.explode_remove_item"
+    bl_label = "Remove Item"
 
-#     def execute(self, context):
-#         index = context.scene.my_collection_index
-#         if index >= 0 and index < len(context.scene.my_collection):
-#             context.scene.my_collection.remove(index)
-#             context.scene.my_collection_index = min(index, len(context.scene.my_collection) - 1)
-#         return {'FINISHED'}
+    def execute(self, context):
+        index = context.scene.explode_LODIndex
+        if index >= 0 and index < len(context.scene.explode_LODs):
+            context.scene.explode_LODs.remove(index)
+            context.scene.explode_LODIndex = min(index, len(context.scene.explode_LODs) - 1)
+        return {'FINISHED'}
 
 def register():
     bpy.utils.register_class(expLODeFBXExporter)
     bpy.utils.register_class(EXPLODE_UL_loLODConfig)
+    bpy.utils.register_class(EXPLODE_OT_add_item)
+    bpy.utils.register_class(EXPLODE_OT_remove_item)
     bpy.utils.register_class(LODConfig)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
     bpy.types.Scene.expLODe_export_lod_panel_open = BoolProperty(
@@ -284,5 +278,9 @@ def register():
 def unregister():
     bpy.utils.unregister_class(expLODeFBXExporter)
     bpy.utils.unregister_class(EXPLODE_UL_loLODConfig)
+    bpy.utils.unregister_class(EXPLODE_OT_add_item)
+    bpy.utils.unregister_class(EXPLODE_OT_remove_item)
+    bpy.utils.unregister_class(LODConfig)
+    
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
     del bpy.types.Scene.expLODe_export_lod_panel_open
