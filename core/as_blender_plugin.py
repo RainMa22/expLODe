@@ -17,6 +17,12 @@ class LODConfig(bpy.types.PropertyGroup):
             ("Unsubdiv", "Unsubdivide Decimate",""),
             ("Collapse", "Collapse Decimate","")),
             default="Planar")
+    
+    _PROPERTIES = {
+        "Planar": "angle_limit",
+        "Unsubdiv": "iterations",
+        "Collapse": "ratio",
+    }
     # Planar only
     angle_limit: FloatProperty(name = "Angle Limit",
                             description = "Planar Modifier Angle Limit",
@@ -33,6 +39,9 @@ class LODConfig(bpy.types.PropertyGroup):
                          default=0.95,
                          min = 0.,
                          max = 1.0)
+    
+    show_self: BoolProperty(default=False, options={"HIDDEN"})
+    
 
     def apply_to_objs(self, objs: typing.Iterable[bpyObject], inplace=True):
         match self.type:
@@ -42,6 +51,17 @@ class LODConfig(bpy.types.PropertyGroup):
                 return unsubdiv(self.iterations, objs, inplace, self.name)
             case "Collapse":
                 collapse(self.ratio,objs, inplace, self.name)
+
+    def draw_self(self, layout:bpy.types.UILayout, context:bpy.types.Context):
+        row = layout.row()
+        row.label(text="LOD Editor:")
+        icon = 'TRIA_DOWN' if self.show_self else 'TRIA_RIGHT'
+        row.prop(self, "show_self", icon=icon, icon_only=True)
+        layout.separator()
+        if(self.show_self):
+            layout.prop(self, "name")
+            layout.prop(self, "type")
+            layout.prop(self, LODConfig._PROPERTIES[self.type])
 
 class EXPLODE_UL_loLODConfig(bpy.types.UIList):
     bl_idname = "EXPLODE_UL_loLODConfig"
@@ -180,6 +200,11 @@ class expLODeFBXExporter(Operator, ExportHelper):
             column = row.column()
             column.operator(EXPLODE_OT_add_item.bl_idname,icon="ADD",text="")
             column.operator(EXPLODE_OT_remove_item.bl_idname,icon="REMOVE",text="")
+            LODs:bpy.types.CollectionProperty = context.scene.explode_LODs
+            active_idx=context.scene.explode_LODIndex
+            active_lodconf: LODConfig = LODs.get(LODs.keys()[active_idx])
+            if(active_lodconf):
+                active_lodconf.draw_self(layout,context)
 
         # return super().draw(context)
  
