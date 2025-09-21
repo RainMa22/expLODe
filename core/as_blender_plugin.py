@@ -8,9 +8,22 @@ import sys
 from .features import *
 
 
-class LODConfig(bpy.types.PropertyGroup):
-    name: StringProperty(default="LOD",
-                         description="name of the LOD and the suffix of the LOD mesh on export")
+class EXPLODE_PROP_LODconfig(bpy.types.PropertyGroup):
+
+    def update_name(self, context):
+        names = list(map(lambda key: context.scene.explode_LODs[key].name, context.scene.explode_LODs.keys()))
+        print(f"{names=}")
+        while len(set(names)) != len(names):
+            if self.name[-1] in "0123456789":
+                self.name = f"{self.name[:-1]}{int(self.name[-1]) + 1}"
+            else:
+                self.name += "1"
+            names = list(map(lambda key: context.scene.explode_LODs[key].name, context.scene.explode_LODs.keys()))
+
+
+    name: StringProperty(default="LOD1",
+                         description="name of the LOD and the suffix of the LOD mesh on export",
+                         update=update_name)
     
     type: EnumProperty(name="type",
         items=(("Planar", "Planar Decimate",""),
@@ -40,17 +53,17 @@ class LODConfig(bpy.types.PropertyGroup):
                          min = 0.,
                          max = 1.0)
     
-    show_self: BoolProperty(default=False, options={"HIDDEN"})
+    show_self: BoolProperty(default=True, options={"HIDDEN"})
     
 
-    def apply_to_objs(self, objs: typing.Iterable[bpyObject], inplace=True):
+    def apply_to_objs(self, objs: typing.Iterable[bpyObject], inplace=False):
         match self.type:
             case "Planar":
                 return planar_decimate(self.angle_limit, objs, inplace, self.name)
             case "Unsubdiv":
                 return unsubdiv(self.iterations, objs, inplace, self.name)
             case "Collapse":
-                collapse(self.ratio,objs, inplace, self.name)
+                return collapse(self.ratio,objs, inplace, self.name)
 
     def draw_self(self, layout:bpy.types.UILayout, context:bpy.types.Context):
         row = layout.row()
@@ -61,7 +74,7 @@ class LODConfig(bpy.types.PropertyGroup):
         if(self.show_self):
             layout.prop(self, "name")
             layout.prop(self, "type")
-            layout.prop(self, LODConfig._PROPERTIES[self.type])
+            layout.prop(self, EXPLODE_PROP_LODconfig._PROPERTIES[self.type])
 
 class EXPLODE_UL_loLODConfig(bpy.types.UIList):
     bl_idname = "EXPLODE_UL_loLODConfig"
@@ -76,6 +89,27 @@ class EXPLODE_UL_loLODConfig(bpy.types.UIList):
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
 
+# Adapted Code from https://github.com/EdyJ/blender-to-unity-fbx-exporter
+# MIT License
+# Copyright (c) 2020 Angel García "Edy"
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 class expLODeFBXExporter(Operator, ExportHelper):
     """
     offers Unity-compatible FBX exports with LOD options 
@@ -186,7 +220,7 @@ class expLODeFBXExporter(Operator, ExportHelper):
         col.alignment = 'RIGHT'
         col.label(text = "Secondary")
         split.column().prop(self, "secondary_bone_axis", text="")
-        
+        # End of code snippet
         layout.separator()
         row = layout.row()
         icon = 'TRIA_DOWN' if context.scene.expLODe_export_lod_panel_open else 'TRIA_RIGHT'
@@ -202,11 +236,11 @@ class expLODeFBXExporter(Operator, ExportHelper):
             column.operator(EXPLODE_OT_remove_item.bl_idname,icon="REMOVE",text="")
             LODs:bpy.types.CollectionProperty = context.scene.explode_LODs
             active_idx=context.scene.explode_LODIndex
-            active_lodconf: LODConfig = LODs.get(LODs.keys()[active_idx])
+            if(len(LODs.items()) == 0):
+                return
+            active_lodconf: EXPLODE_PROP_LODconfig = LODs.get(LODs.keys()[active_idx])
             if(active_lodconf):
                 active_lodconf.draw_self(layout,context)
-
-        # return super().draw(context)
  
     def execute(self, context):
         bpy.ops.ed.undo_push(message="STARTED FBX EXPORT")
@@ -252,6 +286,18 @@ class expLODeFBXExporter(Operator, ExportHelper):
             target.matrix_local = mat_original @ mathutils.Matrix.Rotation(math.radians(90.), 4, "X")
             bpy.context.view_layer.update()
 
+        LODs:bpy.types.CollectionProperty = context.scene.explode_LODs
+        def apply_lod_config(configname: str):
+            config:EXPLODE_PROP_LODconfig = LODs[configname]
+            return config.apply_to_objs(targets)
+        
+        LODs= list(map(apply_lod_config, context.scene.explode_LODs.keys()))
+        print(LODs)
+        for LOD in LODs:
+            targets += LOD
+        
+        # for(config: LODConfig in context.scene.explod_LODs):
+
         print(self.filepath)
         exportFBX(self.filepath,targets)
         bpy.ops.ed.undo_push(message="")
@@ -267,8 +313,9 @@ class EXPLODE_OT_add_item(bpy.types.Operator):
     bl_label = "Add Item"
 
     def execute(self, context):
-        item:LODConfig = context.scene.explode_LODs.add()
-        item.name = "LOD"
+        item:EXPLODE_PROP_LODconfig = context.scene.explode_LODs.add()
+        item.name = item.name
+        # print(context.scene.explode_LODs.items())
         return {'FINISHED'}
 
 class EXPLODE_OT_remove_item(bpy.types.Operator):
@@ -278,8 +325,10 @@ class EXPLODE_OT_remove_item(bpy.types.Operator):
     def execute(self, context):
         index = context.scene.explode_LODIndex
         if index >= 0 and index < len(context.scene.explode_LODs):
+            context.scene.explode_LODs[index]
             context.scene.explode_LODs.remove(index)
             context.scene.explode_LODIndex = min(index, len(context.scene.explode_LODs) - 1)
+
         return {'FINISHED'}
 
 def register():
@@ -287,12 +336,12 @@ def register():
     bpy.utils.register_class(EXPLODE_UL_loLODConfig)
     bpy.utils.register_class(EXPLODE_OT_add_item)
     bpy.utils.register_class(EXPLODE_OT_remove_item)
-    bpy.utils.register_class(LODConfig)
+    bpy.utils.register_class(EXPLODE_PROP_LODconfig)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
     bpy.types.Scene.expLODe_export_lod_panel_open = BoolProperty(
         default=False
     )
-    bpy.types.Scene.explode_LODs = CollectionProperty(type=LODConfig, 
+    bpy.types.Scene.explode_LODs = CollectionProperty(type=EXPLODE_PROP_LODconfig, 
                               name="LODs",
                               description="Additional LOD meshes to generate and export",
                               )
@@ -305,7 +354,7 @@ def unregister():
     bpy.utils.unregister_class(EXPLODE_UL_loLODConfig)
     bpy.utils.unregister_class(EXPLODE_OT_add_item)
     bpy.utils.unregister_class(EXPLODE_OT_remove_item)
-    bpy.utils.unregister_class(LODConfig)
+    bpy.utils.unregister_class(EXPLODE_PROP_LODconfig)
     
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
     del bpy.types.Scene.expLODe_export_lod_panel_open

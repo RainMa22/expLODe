@@ -60,7 +60,7 @@ def dup_and_rename_suffix(prev_suffix="", new_suffix=None):
     bpy.ops.object.duplicate()
     changed = []
     for select_obj in bpy.context.selected_objects:
-        select_obj.name = select_obj.name.replace(f"{prev_suffix}.001", f".{new_suffix}")
+        select_obj.name = select_obj.name[:-3]+f".{new_suffix}"
         changed.append(select_obj)
     return changed
 
@@ -89,7 +89,6 @@ def exportFBX(filepath, targets=None):
     return filepath
 
 def smart_uv_unwrap(target:bpy.types.SceneObjects=None, 
-              context: int|str|None=None, undo = None,     
               angle_limit: float | None = 1.15192,
               margin_method: typing.Literal["SCALED", "ADD", "FRACTION"] | None = "SCALED",
               rotate_method: typing.Literal["AXIS_ALIGNED", "AXIS_ALIGNED_X", "AXIS_ALIGNED_Y"]
@@ -106,15 +105,13 @@ def smart_uv_unwrap(target:bpy.types.SceneObjects=None,
         obj.select_set(True)
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.uv.smart_project(context, 
-                                 undo, 
-                                 angle_limit, 
-                                 margin_method,
-                                 rotate_method,
-                                 island_margin,
-                                 area_weight,
-                                 correct_aspect,
-                                 scale_to_bounds
+        bpy.ops.uv.smart_project(angle_limit=angle_limit, 
+                                 margin_method=margin_method,
+                                 rotate_method=rotate_method,
+                                 island_margin=island_margin,
+                                 area_weight=area_weight,
+                                 correct_aspect=correct_aspect,
+                                 scale_to_bounds=scale_to_bounds
                                  )
         bpy.ops.object.mode_set(mode='OBJECT')
         obj.select_set(False)
@@ -133,16 +130,17 @@ def unsubdiv(iterations: int, target:bpy.types.SceneObjects = None, inplace = Tr
     if(not inplace):
         select_target(target)
         target = dup_and_rename_suffix(new_suffix=fx_name)
-    changed = []
+    changed = set()
     for obj in target:
         if obj.type != 'MESH':
+            changed.add(obj)
             continue
         modifier:bpy.types.DecimateModifier = obj.modifiers.new(name=fx_name,type="DECIMATE")
         modifier.decimate_type="UNSUBDIV"
         modifier.iterations=iterations
         bpy.context.view_layer.objects.active=obj
         bpy.ops.object.modifier_apply(modifier=fx_name)
-        changed.append(obj)
+        changed.add(obj)
     return changed
 
 def planar_decimate(angle_limit = math.radians(10.), target = None, inplace=True, name_override:str = None):
@@ -151,16 +149,17 @@ def planar_decimate(angle_limit = math.radians(10.), target = None, inplace=True
     if(not inplace):
         select_target(target)
         target = dup_and_rename_suffix(new_suffix=fx_name)
-    changed = []
+    changed = set()
     for obj in target:
         if obj.type != 'MESH':
+            changed.add(obj)
             continue
         modifier:bpy.types.DecimateModifier = obj.modifiers.new(name=fx_name,type="DECIMATE")
         modifier.angle_limit = angle_limit
         modifier.decimate_type = "DISSOLVE" # planar
         bpy.context.view_layer.objects.active=obj
         bpy.ops.object.modifier_apply(modifier=fx_name)
-        changed.append(obj)
+        changed.add(obj)
     return changed
 
 
@@ -170,16 +169,17 @@ def collapse(ratio: float = 0.95, target = None, inplace=True, name_override:str
     if(not inplace):
         select_target(target)
         target = dup_and_rename_suffix(new_suffix=fx_name)
-    changed = []
+    changed = set()
     for obj in target:
         if obj.type != 'MESH':
+            changed.add(obj)
             continue
         modifier:bpy.types.DecimateModifier = obj.modifiers.new(name=fx_name,type="DECIMATE")
         modifier.ratio = ratio
         modifier.decimate_type = "COLLAPSE" # planar
         bpy.context.view_layer.objects.active=obj
         bpy.ops.object.modifier_apply(modifier=fx_name)
-        changed.append(obj)
+        changed.add(obj)
     return changed
 
 def lvl_one_lod_to_all():
