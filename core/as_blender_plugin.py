@@ -220,7 +220,6 @@ class expLODeFBXExporter(Operator, ExportHelper):
         col.alignment = 'RIGHT'
         col.label(text = "Secondary")
         split.column().prop(self, "secondary_bone_axis", text="")
-        # End of code snippet
         layout.separator()
         row = layout.row()
         icon = 'TRIA_DOWN' if context.scene.expLODe_export_lod_panel_open else 'TRIA_RIGHT'
@@ -230,7 +229,6 @@ class expLODeFBXExporter(Operator, ExportHelper):
             row = layout.row()
             split = row.split()
             split.template_list(EXPLODE_UL_loLODConfig.bl_idname,"LOLOD_full",context.scene, "explode_LODs",context.scene,"explode_LODIndex")
-            # layout.row().template_list(EXPLODE_UL_loLODConfig.bl_idname,"LOLOD_compact",context.scene, "explode_LODs",context.scene,"explode_LODIndex", type="COMPACT")
             column = row.column()
             column.operator(EXPLODE_OT_add_item.bl_idname,icon="ADD",text="")
             column.operator(EXPLODE_OT_remove_item.bl_idname,icon="REMOVE",text="")

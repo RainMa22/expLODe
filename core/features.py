@@ -1,5 +1,5 @@
 import bpy
-import math
+import math, mathutils
 import random
 import re
 import typing
@@ -181,6 +181,31 @@ def collapse(ratio: float = 0.95, target = None, inplace=True, name_override:str
         bpy.ops.object.modifier_apply(modifier=fx_name)
         changed.add(obj)
     return changed
+
+def make_unity_compatible(inverse = False, targets = None, inplace = False, name_override:str=None):
+    targets = targets if targets is not None else get_selected()
+    suffix = "unity_compat" if name_override is None else name_override
+    if(not inplace):
+        select_target(targets)
+        targets = dup_and_rename_suffix(new_suffix=suffix)
+    changed = set(targets)
+    for target in targets:            
+        if target.parent:
+            world_mat = target.matrix_world.copy()
+            target.matrix_parent_inverse.identity()
+            target.matrix_basis = target.parent.matrix_world.inverted() @ world_mat
+        mat_original = target.matrix_local.copy()
+        target.matrix_local = mathutils.Matrix.Rotation(math.radians(-90. if not inverse else 90.), 4, 'X')
+        # apply rotation and scale
+        deselect_all()
+        target.select_set(True)
+        bpy.context.view_layer.objects.active = target
+        bpy.ops.object.transform_apply(location= False, rotation=True, scale=True)
+        # this fixes unity's rotation offset
+        target.matrix_local = mat_original @ mathutils.Matrix.Rotation(math.radians(90. if not inverse else -90.), 4, "X")
+        bpy.context.view_layer.update()
+    return changed
+    
 
 def lvl_one_lod_to_all():
     return lvl_one_lod(bpy.context.scene.objects)
