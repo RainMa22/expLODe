@@ -3,6 +3,7 @@ import math, mathutils
 import random
 import re
 import typing
+from typing import *
 from bpy.types import Object as bpyObject
 
 def new_scene(scene_name = None):
@@ -75,17 +76,42 @@ def importFBX(filepath):
     imported = [obj for obj in bpy.context.selected_objects]
     return imported
 
-def exportFBX(filepath, targets=None):
+def exportFBX(filepath, targets=None, 
+              global_scale : float = 1, 
+              apply_unit_scale: bool = True,
+              apply_scale_options: Literal["FBX_SCALE_NONE", 'FBX_SCALE_UNITS', 'FBX_SCALE_CUSTOM', 'FBX_SCALE_ALL'] = "FBX_SCALE_ALL",
+              use_space_transform: bool = True,
+              bake_space_transform: bool = False,
+              object_types: set[Literal['EMPTY', 'CAMERA', 'LIGHT', 'ARMATURE', 'MESH', 'OTHER']] = {"EMPTY", "CAMERA", "LIGHT", "ARMATURE", "MESH", "OTHER"},
+              use_armature_deform_only: bool = False, 
+              add_leaf_bones: bool = True, 
+              primary_bone_axis: Literal['X', 'Y', 'Z', '-X', '-Y', '-Z'] = "Y",
+              secondary_bone_axis: Literal['X', 'Y', 'Z', '-X', '-Y', '-Z'] = "X", 
+              use_tspace: bool = False, 
+              use_triangles: bool = False,
+              axis_forward: Literal['X', 'Y', 'Z', '-X', '-Y', '-Z'] = "-Z",
+              axis_up: Literal['X', 'Y', 'Z', '-X', '-Y', '-Z']  = "Y"):
     targets = targets if targets is not None else bpy.context.scene.objects
     deselect_all()
     for obj in targets:
         obj.select_set(True)
     bpy.ops.export_scene.fbx(filepath=filepath,
-                             axis_forward='-Z', 
-                             axis_up='Y',
+                             global_scale = global_scale,
+                             apply_unit_scale = apply_unit_scale,
+                             apply_scale_options= apply_scale_options,
+                             use_space_transform=use_space_transform,
+                             bake_space_transform=bake_space_transform,
+                             use_armature_deform_only=use_armature_deform_only,
+                             add_leaf_bones = add_leaf_bones,
+                             primary_bone_axis = primary_bone_axis,
+                             secondary_bone_axis=secondary_bone_axis,
+                             use_tspace=use_tspace,
+                             use_triangles=use_triangles,
+                             object_types= object_types,
+                             axis_forward=axis_forward, 
+                             axis_up=axis_up,
                              use_selection=True,
-                             object_types= set(("EMPTY", "CAMERA", "LIGHT", "ARMATURE", "MESH", "OTHER")),
-                             apply_scale_options='FBX_SCALE_ALL')
+                             )
     return filepath
 
 def smart_uv_unwrap(target:bpy.types.SceneObjects=None, 

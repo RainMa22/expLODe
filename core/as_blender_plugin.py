@@ -297,7 +297,14 @@ class expLODeFBXExporter(Operator, ExportHelper):
         # for(config: LODConfig in context.scene.explod_LODs):
 
         print(self.filepath)
-        exportFBX(self.filepath,targets)
+        exportFBX(self.filepath,targets, 
+                  use_armature_deform_only=self.deform_bones,
+                  add_leaf_bones=self.leaf_bones,
+                  use_triangles=self.triangulate_faces,
+                  primary_bone_axis=self.primary_bone_axis,
+                  secondary_bone_axis=self.secondary_bone_axis,
+                  use_tspace=self.tangent_space
+                  )
         bpy.ops.ed.undo_push(message="")
         bpy.ops.ed.undo()
         return {"FINISHED"}
