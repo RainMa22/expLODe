@@ -378,7 +378,15 @@ class ImportStep(FunctionStep):
     def copy_from(self, other):
         return super().copy_from(other)
 
+class UnityfyStep(RemovableFunctionStep):
+    FORMAL_NAME = "Blender -> Unity"
+    def __init__(self):
+        super().__init__("unityfy", [], formal_name=self.FORMAL_NAME)
 
+class UnUnityfyStep(RemovableFunctionStep):
+    FORMAL_NAME = "Unity -> Blender"
+    def __init__(self):
+        super().__init__("un-unityfy", [], formal_name=self.FORMAL_NAME)
 
 class UvUnwrapStep(RemovableFunctionStep):
     FORMAL_NAME = "UV Unwrap"
@@ -516,7 +524,7 @@ class ExportStep(QStepWidget):
     
     def set_export_to(self, export_to):
         self.export_to = os.path.abspath(export_to)
-        self.file_choose_button.setText(os.path.relpath(self.export_to))
+        self.file_choose_button.setText(os.path.relpath(self.export_to) + os.path.sep)
     
     def get_export_to(self):
         return self.export_to
@@ -555,7 +563,9 @@ class ExportStep(QStepWidget):
 GENERAL_CLASSES = [(UvUnwrapStep.FORMAL_NAME, UvUnwrapStep),
                     (PlanarStep.FORMAL_NAME, PlanarStep),
                     (UnsubdivStep.FORMAL_NAME, UnsubdivStep),
-                    (CollapseStep.FORMAL_NAME, CollapseStep)]
+                    (CollapseStep.FORMAL_NAME, CollapseStep),
+                    (UnityfyStep.FORMAL_NAME, UnityfyStep),
+                    (UnUnityfyStep.FORMAL_NAME, UnUnityfyStep)]
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -599,6 +609,16 @@ class MainWindow(QMainWindow):
                     case ("with", (varname, ("import", "FBX", "inFile")), step):
                         s_content = step
                         i_s = ImportStep()
+                        i_s.set_varname(str(varname))
+                        preset.import_step = i_s
+                    case ("with", (varname, ("unityfy", target)), step):
+                        s_content = step
+                        i_s = UnityfyStep()
+                        i_s.set_varname(str(varname))
+                        preset.import_step = i_s
+                    case ("with", (varname, ("un-unityfy", target)), step):
+                        s_content = step
+                        i_s = UnUnityfyStep()
                         i_s.set_varname(str(varname))
                         preset.import_step = i_s
                     case ("with", (varname, ("uv-unwrap", target)),step):
