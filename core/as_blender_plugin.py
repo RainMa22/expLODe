@@ -267,23 +267,8 @@ class expLODeFBXExporter(Operator, ExportHelper):
             for modifier in target.modifiers:
                 bpy.ops.object.modifier_apply(modifier=modifier.name)
 
-        for target in targets:
-            # reset parent inverse
-            if target.parent:
-                world_mat = target.matrix_world.copy()
-                target.matrix_parent_inverse.identity()
-                target.matrix_basis = target.parent.matrix_world.inverted() @ world_mat
-            mat_original = target.matrix_local.copy()
-            target.matrix_local = mathutils.Matrix.Rotation(math.radians(-90.), 4, 'X')
-            # apply rotation and scale
-            deselect_all()
-            target.select_set(True)
-            context.view_layer.objects.active = target
-            bpy.ops.object.transform_apply(location= False, rotation=True, scale=True)
-            # this fixes unity's rotation offset
-            target.matrix_local = mat_original @ mathutils.Matrix.Rotation(math.radians(90.), 4, "X")
-            bpy.context.view_layer.update()
-
+        make_unity_compatible(targets=targets, inplace=True,name_override="")
+        
         LODs:bpy.types.CollectionProperty = context.scene.explode_LODs
         def apply_lod_config(configname: str):
             config:EXPLODE_PROP_LODconfig = LODs[configname]
