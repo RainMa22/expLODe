@@ -6,11 +6,8 @@
     (og 
         (import FBX inFile)) 
 (with 
-    (og
-        (unityfy og2))
-(with 
     (LOD0 
-        (uv-unwrap  og2)) 
+        (uv-unwrap  og)) 
     
 (with 
     (LOD1 
@@ -27,7 +24,6 @@
 )
 )
 )
-)    
 (def (fn-for-inFiles inFiles)
     (if (empty? inFiles)
         '()

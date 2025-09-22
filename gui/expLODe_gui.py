@@ -613,14 +613,14 @@ class MainWindow(QMainWindow):
                         preset.import_step = i_s
                     case ("with", (varname, ("unityfy", target)), step):
                         s_content = step
-                        i_s = UnityfyStep()
-                        i_s.set_varname(str(varname))
-                        preset.import_step = i_s
+                        unityfy_s = UnityfyStep()
+                        unityfy_s.set_varname(str(varname))
+                        preset.additional_steps.append(unityfy_s)
                     case ("with", (varname, ("un-unityfy", target)), step):
                         s_content = step
-                        i_s = UnUnityfyStep()
-                        i_s.set_varname(str(varname))
-                        preset.import_step = i_s
+                        ununityfy_s = UnUnityfyStep()
+                        ununityfy_s.set_varname(str(varname))
+                        preset.additional_steps.append(ununityfy_s)
                     case ("with", (varname, ("uv-unwrap", target)),step):
                         s_content = step
                         uvstep =UvUnwrapStep()
