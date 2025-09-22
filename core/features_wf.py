@@ -122,7 +122,10 @@ def interp_workflow(env: dict, wf, interp_override=None):
         case ("filepath-filenameNoExt", string):
             return make_string(os.path.splitext(os.path.basename(interp(string)))[0])
         case ("select", regex):
+            regex = regex.name if type(regex) is make_symbol else regex
             return select_regex(regExp=re.compile(regex))
+        case ("get-selected"):
+            return get_selected()
         # case ("new-scene"):
         #     return ("Scene", new_scene())
         # case ("new-scene", name):
