@@ -121,6 +121,8 @@ def interp_workflow(env: dict, wf, interp_override=None):
             return os.path.basename(interp(string))
         case ("filepath-filenameNoExt", string):
             return make_string(os.path.splitext(os.path.basename(interp(string)))[0])
+        case ("select", regex):
+            return select_regex(regExp=re.compile(regex))
         # case ("new-scene"):
         #     return ("Scene", new_scene())
         # case ("new-scene", name):
@@ -152,6 +154,10 @@ def interp_workflow(env: dict, wf, interp_override=None):
             return tuple(collapse(interp(ratio), interp(target), inplace=False)) 
         case ("collapse", ratio, target):
             return tuple(collapse(interp(ratio), interp(target), inplace=False))
+        case ("unityfy", target):
+            return tuple(make_unity_compatible(targets=interp(target)))
+        case ("un-unityfy", target):
+            return tuple(make_unity_compatible(inverse=True, targets=interp(target)))
         case (x, *rest):
             # TOOO: need to fix the logic below
             return interp((env.get(x), *rest)) if x in env.keys() else ((interp(x), *rest))
@@ -164,38 +170,6 @@ def interp_workflow(env: dict, wf, interp_override=None):
 def interp_workflow0(wf0):
     return interp_workflow({}, sexp(wf0).content())
 
-# def testLOD1():
-#     folder = os.path.abspath(os.path.dirname(__file__))
-#     test_fbx_file = os.sep.join([folder, "test.fbx"])
-#     out_fbx_file = os.sep.join([folder, "testLOD1.fbx"])
-#     workflow = f"""
-#     (with (inFile (make-string {test_fbx_file}))
-#         (with (outFile (make-string {out_fbx_file}))
-#             (export FBX outFile
-#                 (planar (deg->rad 10)
-#                     (import FBX inFile)))))""".replace("\n","")
-#     interp_workflow0(workflow)
-#     os.remove(out_fbx_file)
-#     return True
-
-# def testLOD2():
-#     folder = os.path.abspath(os.path.dirname(__file__))
-#     test_fbx_file = os.sep.join([folder, "test.fbx"])
-#     out_fbx_file = os.sep.join([folder, "testLOD2.fbx"])
-#     workflow = f"""
-#     (with (inFile (make-string {test_fbx_file}))
-#         (with (outFile (make-string {out_fbx_file}))
-#             (export FBX outFile
-#                 (unsubdiv 10
-#                     (import FBX inFile)))))""".replace("\n","")
-#     interp_workflow0(workflow)
-#     os.remove(out_fbx_file)
-#     return True
-
-# assert(testLOD1())
-# assert(testLOD2())
-
-
 assert (interp_workflow0("(with (a 12) (divide a 4))") == 3)
 assert (interp_workflow0("(with (a 12) (/ a 4))") == 3)
 assert (interp_workflow0("(with (b 4) (with (a 12) (/ a b)))") == 3)
@@ -205,17 +179,14 @@ assert (interp_workflow0("(with (b 4) (with (a 12) (if (= a 121) (/ a b) -1)))")
 assert (interp_workflow0("(first '(b 4))") == 'b')
 assert (interp_workflow0("(first (list b 4))") == 'b')
 assert (interp_workflow0("(first (cons b (cons 4 '())))") == 'b')
-# print (interp_workflow0("(rest (b 4))"))
 assert (interp_workflow0("(rest '(b 4))") == (4,))
 assert (interp_workflow0("(rest (cons b '(4)))") == (4,))
 assert (interp_workflow0("(rest (cons b (cons 4 '())))") == (4,))
 assert (interp_workflow0("(empty? (rest (rest '(b 4))))"))
-# print(interp_workflow({},(("funV", ('a', 'b'),{},('/','a','b')),12,3)))
 assert (interp_workflow({},(("funV", ('a', 'b'),{},('/','a','b')),12,3)) == 4)
-# print(interp_workflow0("(with (div (a b) (/ a b)) (div 12 3))"))
 assert (interp_workflow0("(with (div (a b) (/ a b)) (div 12 3))") == 4)
-# print (interp_workflow0("(with (mod (a b) (if (>= a b) (mod (- a b) b) a)) (mod 12 4)"))
 assert (interp_workflow0("(with (mod (a b) (if (>= a b) (mod (- a b) b) a)) (mod 12 4))") == 0)
+assert (interp_workflow0("(eval '(+ 3 4))") == 7)
 
 def repl():
     print()
