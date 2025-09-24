@@ -2,8 +2,7 @@ import bpy
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import CollectionProperty,StringProperty, BoolProperty, EnumProperty, IntProperty, FloatProperty
 from bpy.types import Operator 
-import math, mathutils
-import sys
+import math
 
 from .features import *
 
