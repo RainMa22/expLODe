@@ -25,7 +25,7 @@ blender_version_min = "4.2.0"
 # License conforming to https://spdx.org/licenses/ (use "SPDX: prefix)
 # https://docs.blender.org/manual/en/dev/advanced/extensions/licenses.html
 license = [
-  "SPDX:Apache-2.0",
+  "SPDX:SPDX:GPL-3.0-or-later",
 ]
 # # Optional: required by some licenses.
 # copyright = [
@@ -76,5 +76,13 @@ paths_exclude_pattern = [
   "config.json",
   "req.txt",
   "ui-req.txt",
-  ".gitignore"
+  ".gitignore",
+  # removed other functionalities for Blender extension only,
+  "core/features_wf.py",
+  "core/sexp.py",
+  "gui/*",
+  "bio/*",
+  "__main__.py",
+  "expLODe.py",
+  "globals.py"
 ]
