@@ -73,5 +73,8 @@ paths_exclude_pattern = [
   "/.git/",
   "/*.zip",
   ".*",
-  "config.json"
+  "config.json",
+  "req.txt",
+  "ui-req.txt",
+  ".gitignore"
 ]
