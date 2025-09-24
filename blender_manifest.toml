@@ -84,5 +84,6 @@ paths_exclude_pattern = [
   "bio/*",
   "__main__.py",
   "expLODe.py",
-  "globals.py"
+  "globals.py",
+  "**.wf",
 ]
