@@ -77,6 +77,7 @@ paths_exclude_pattern = [
   "req.txt",
   "ui-req.txt",
   ".gitignore",
+  "*.fbx",
   # removed other functionalities for Blender extension only,
   "core/features_wf.py",
   "core/sexp.py",
