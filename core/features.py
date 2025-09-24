@@ -61,7 +61,7 @@ def dup_and_rename_suffix(prev_suffix="", new_suffix=None):
     bpy.ops.object.duplicate()
     changed = []
     for select_obj in bpy.context.selected_objects:
-        select_obj.name = select_obj.name[:-3]+f".{new_suffix}"
+        select_obj.name = select_obj.name[:-3]+f"{new_suffix}"
         changed.append(select_obj)
     return changed
 
