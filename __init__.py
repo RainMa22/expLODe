@@ -4,9 +4,9 @@ bl_info = {
     "name": "expLODe",
     "author": "RainMa22",
     "blender": (4,2,0), # Minimum Blender version
-    "version": (0,0,1),
+    "version": (0,1,0),
     "category": "Import-Export",
-    "location": "File > Export > FBX (Unity-compatible, with LOD)",
+    "location": "File > Export > FBX (with LOD)",
 	"description": "LOD generation and export as FBX",
 }
 
