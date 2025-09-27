@@ -6,8 +6,8 @@
     (og 
         (import FBX inFile)) 
 (with 
-    (og
-        (unityfy og2))
+    (og2
+        (unityfy og))
 (with 
     (LOD0 
         (uv-unwrap  og2)) 
