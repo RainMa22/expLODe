@@ -109,213 +109,7 @@ class EXPLODE_UL_loLODConfig(bpy.types.UIList):
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-class expLODeUnityFBXExporter(Operator, ExportHelper):
-    """
-    offers Unity-compatible FBX exports with LOD options 
-    """
-    bl_idname = "export_scene.explode_unity_fbx"
-    bl_label = "Export FBX"
-    bl_options = {'UNDO_GROUPED'}
-
-    filename_ext = ".fbx"
-
-    filter_glob: StringProperty(
-        default="*.fbx",
-        options={'HIDDEN'},
-        maxlen=255,  # Max internal buffer length, longer would be clamped.
-    )
-
-    active_collection: BoolProperty(
-        name="Active Collection Only",
-        description="Export objects in the active collection only (and its children). ",
-        default=False,
-    )
-
-    selected_objects: BoolProperty(
-        name="Selected Objects Only",
-        description="Export selected objects only. ",
-        default=False,
-    )
-
-    deform_bones: BoolProperty(
-        name="Only Deform Bones",
-        description="Only write deforming bones (and non-deforming ones when they have deforming children)",
-        default=False,
-    )
-
-    leaf_bones: BoolProperty(
-        name="Add Leaf Bones",
-        description="Append a final bone to the end of each chain to specify last bone length "
-        "(use this when you intend to edit the armature from exported data)",
-        default=False,
-    )
-
-    triangulate_faces: BoolProperty(
-        name="Triangulate Faces",
-        description="Convert all faces to triangles. " \
-        "This is necessary for exporting tangents in meshes with N-gons. " \
-        "Otherwise Unity will show a warning when importing tangents in these meshes",
-        default=False,
-    )
-
-    primary_bone_axis: EnumProperty(
-        name="Primary",
-        items=(('X', "X Axis", ""),
-                ('Y', "Y Axis", ""),
-                ('Z', "Z Axis", ""),
-                ('-X', "-X Axis", ""),
-                ('-Y', "-Y Axis", ""),
-                ('-Z', "-Z Axis", ""),
-        ),
-        default='Y',
-    )
-
-    secondary_bone_axis: EnumProperty(
-        name="Secondary",
-        items=(('X', "X Axis", ""),
-                ('Y', "Y Axis", ""),
-                ('Z', "Z Axis", ""),
-                ('-X', "-X Axis", ""),
-                ('-Y', "-Y Axis", ""),
-                ('-Z', "-Z Axis", ""),
-        ),
-        default='X',
-    )
-
-    tangent_space: BoolProperty(
-        name="Export tangents",
-        description="Add binormal and tangent vectors, " \
-        "together with normal they form the tangent space (tris/quads only). " \
-        "Meshes with N-gons won't export tangents unless the option Triangulate Faces is enabled",
-        default=False,
-    )
-
-
-
-    def draw(self, context):
-        layout = self.layout
-        layout.row().label(text = "Selection")
-        layout.row().prop(self, "active_collection")
-        layout.row().prop(self, "selected_objects")
-
-        layout.separator()
-        layout.row().label(text = "Meshes")
-        layout.row().prop(self, "triangulate_faces")
-        layout.row().prop(self, "tangent_space")
-
-        layout.separator()
-        layout.row().label(text = "Armatures")
-        layout.row().prop(self, "deform_bones")
-        layout.row().prop(self, "leaf_bones")
-
-        layout.row().label(text = "Bone Axes")
-        split = layout.split(factor=0.4)
-        col = split.column()
-        col.alignment = 'RIGHT'
-        col.label(text = "Primary")
-        split.column().prop(self, "primary_bone_axis", text="")
-        split = layout.split(factor=0.4)
-        col = split.column()
-        col.alignment = 'RIGHT'
-        col.label(text = "Secondary")
-        split.column().prop(self, "secondary_bone_axis", text="")
-        layout.separator()
-        row = layout.row()
-        icon = 'TRIA_DOWN' if context.scene.expLODe_export_lod_panel_open else 'TRIA_RIGHT'
-        row.label(text="LODs:")
-        row.prop(context.scene, "expLODe_export_lod_panel_open", icon=icon, icon_only=True)
-        if context.scene.expLODe_export_lod_panel_open:
-            row = layout.row()
-            split = row.split()
-            split.template_list(EXPLODE_UL_loLODConfig.bl_idname,"LOLOD_full",context.scene, "explode_LODs",context.scene,"explode_LODIndex")
-            column = row.column()
-            column.operator(EXPLODE_OT_add_item.bl_idname,icon="ADD",text="")
-            column.operator(EXPLODE_OT_remove_item.bl_idname,icon="REMOVE",text="")
-            LODs:bpy.types.CollectionProperty = context.scene.explode_LODs
-            active_idx=context.scene.explode_LODIndex
-            if(len(LODs.items()) == 0):
-                return
-            active_lodconf: EXPLODE_PROP_LODconfig = LODs.get(LODs.keys()[active_idx])
-            if(active_lodconf):
-                active_lodconf.draw_self(layout,context)
- 
-    def execute(self, context):
-        bpy.ops.ed.undo_push(message="STARTED FBX EXPORT")
-        if bpy.ops.object.mode_set.poll():
-            bpy.ops.object.mode_set(mode="OBJECT")
-
-        targets = [obj for obj in bpy.data.objects if obj and obj in list(context.scene.objects)]
-        unhid = []
-        visibled = []
-        for target in targets:
-            unhid = unhide(target, unhide_parent=True, exclude=unhid)
-            visibled = make_visible(target,make_visible_parent=True, exclude=visibled)
-        # print(f"unhid: {unhid}")
-        # print(f"visibled: {visibled}")
-        if(self.active_collection):
-            active_collection = context.view_layer.active_layer_collection.collection
-            targets = [obj for obj in targets if obj in list(active_collection.objects)]
-        if(self.selected_objects):
-            targets = [obj for obj in targets if obj in context.selected_objects]
-        # print(targets)
-
-        for target in targets:
-            context.view_layer.objects.active = target
-            for constraint in target.constraints:
-                bpy.ops.constraint.apply(constraint=constraint.name)
-            for modifier in target.modifiers:
-                bpy.ops.object.modifier_apply(modifier=modifier.name)
-
-        make_unity_compatible(targets=targets, inplace=True,name_override="")
-        
-        LODs:bpy.types.CollectionProperty = context.scene.explode_LODs
-        def apply_lod_config(configname: str):
-            config:EXPLODE_PROP_LODconfig = LODs[configname]
-            return config.apply_to_objs(targets)
-        
-        LODs= list(map(apply_lod_config, context.scene.explode_LODs.keys()))
-        # print(LODs)
-        for LOD in LODs:
-            targets += LOD
-        
-        # for(config: LODConfig in context.scene.explod_LODs):
-
-        # print(self.filepath)
-        exportFBX(self.filepath,targets, 
-                  use_armature_deform_only=self.deform_bones,
-                  add_leaf_bones=self.leaf_bones,
-                  use_triangles=self.triangulate_faces,
-                  primary_bone_axis=self.primary_bone_axis,
-                  secondary_bone_axis=self.secondary_bone_axis,
-                  use_tspace=self.tangent_space
-                  )
-        bpy.ops.ed.undo_push(message="")
-        bpy.ops.ed.undo()
-        return {"FINISHED"}
-
-
-# Adapted Code from https://github.com/EdyJ/blender-to-unity-fbx-exporter
-# MIT License
-# Copyright (c) 2020 Angel García "Edy"
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-class expLODeFBXExporter(Operator, ExportHelper):
+class expLODeExporter(Operator, ExportHelper):
     """
     offers Normal Blender-coordinate FBX exports with LOD options 
     """
@@ -444,7 +238,10 @@ class expLODeFBXExporter(Operator, ExportHelper):
             active_lodconf: EXPLODE_PROP_LODconfig = LODs.get(LODs.keys()[active_idx])
             if(active_lodconf):
                 active_lodconf.draw_self(layout,context)
- 
+    
+    def additional_transforms(self, targets):
+        pass
+
     def execute(self, context):
         bpy.ops.ed.undo_push(message="STARTED FBX EXPORT")
         if bpy.ops.object.mode_set.poll():
@@ -472,7 +269,7 @@ class expLODeFBXExporter(Operator, ExportHelper):
             for modifier in target.modifiers:
                 bpy.ops.object.modifier_apply(modifier=modifier.name)
 
-        # make_unity_compatible(targets=targets, inplace=True,name_override="")
+        self.additional_transforms(targets)
         
         LODs:bpy.types.CollectionProperty = context.scene.explode_LODs
         def apply_lod_config(configname: str):
@@ -499,8 +296,22 @@ class expLODeFBXExporter(Operator, ExportHelper):
         bpy.ops.ed.undo()
         return {"FINISHED"}
 
+class expLodeFBXExporter(expLODeExporter):
+    pass
+
+class expLODeUnityFBXExporter(expLODeExporter):
+    bl_idname = "export_scene.explode_unity_fbx"
+    bl_label = "Export FBX"
+    bl_options = {'UNDO_GROUPED'}
+
+    filename_ext = ".fbx"
+
+    def additional_transforms(self, targets):
+        super().additional_transforms(targets)
+        make_unity_compatible(targets=targets, inplace=True,name_override="")
+
 def menu_func_export(self, context):
-    self.layout.operator(expLODeFBXExporter.bl_idname, text="FBX (with LOD)")
+    self.layout.operator(expLODeExporter.bl_idname, text="FBX (with LOD)")
     self.layout.operator(expLODeUnityFBXExporter.bl_idname, text="FBX (Unity-compatible, with LOD)")
 
 
@@ -528,7 +339,7 @@ class EXPLODE_OT_remove_item(bpy.types.Operator):
         return {'FINISHED'}
 
 def register():
-    bpy.utils.register_class(expLODeFBXExporter)
+    bpy.utils.register_class(expLodeFBXExporter)
     bpy.utils.register_class(expLODeUnityFBXExporter)
     bpy.utils.register_class(EXPLODE_UL_loLODConfig)
     bpy.utils.register_class(EXPLODE_OT_add_item)
@@ -547,7 +358,7 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(expLODeFBXExporter)
+    bpy.utils.unregister_class(expLodeFBXExporter)
     bpy.utils.unregister_class(expLODeUnityFBXExporter)
     bpy.utils.unregister_class(EXPLODE_UL_loLODConfig)
     bpy.utils.unregister_class(EXPLODE_OT_add_item)
