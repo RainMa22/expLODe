@@ -260,7 +260,7 @@ def hide(object: bpyObject):
 def unhide(object: bpyObject, unhide_parent = False, exclude = [].copy()):
     if(object in exclude):
         return exclude
-    print(f"object {object} is {'not hidden' if not object.hide_get() else 'hidden'}")
+    # print(f"object {object} is {'not hidden' if not object.hide_get() else 'hidden'}")
     if(object.hide_get()):
         exclude.append(object)
         object.hide_set(False)
@@ -269,7 +269,7 @@ def unhide(object: bpyObject, unhide_parent = False, exclude = [].copy()):
             if(object in exclude):
                 continue
             object = object.parent
-            print(f"object {object} is {'not hidden' if not object.hide_get() else 'hidden'}")
+            # print(f"object {object} is {'not hidden' if not object.hide_get() else 'hidden'}")
             if(object.hide_get()):
                 exclude.append(object)
                 object.hide_set(False)
@@ -285,7 +285,7 @@ def make_invis(object: bpyObject):
 def make_visible(object: bpyObject, make_visible_parent = False, exclude = [].copy()):
     if object in exclude:
         return exclude
-    print(f"object {object} is {'visible' if not object.hide_viewport else 'invisible'}")
+    # print(f"object {object} is {'visible' if not object.hide_viewport else 'invisible'}")
     if(object.hide_viewport):
         exclude.append(object)
         object.hide_viewport = False
@@ -293,27 +293,27 @@ def make_visible(object: bpyObject, make_visible_parent = False, exclude = [].co
         for collection in object.users_collection:
             if collection in exclude:
                 continue
-            print(f"collection {collection} is {'visible' if not collection.hide_viewport else 'invisible'}")
+            # print(f"collection {collection} is {'visible' if not collection.hide_viewport else 'invisible'}")
             if(collection.hide_viewport):
                 exclude.append(collection)
                 collection.hide_viewport = False
             layer_collection = layer_collection_of(collection)
             if layer_collection in exclude:
                 continue
-            print(f"layer collection of {collection} is {'visible' if not layer_collection.hide_viewport else 'invisible'}")
+            # print(f"layer collection of {collection} is {'visible' if not layer_collection.hide_viewport else 'invisible'}")
             if(layer_collection.hide_viewport):
                 exclude.append(layer_collection)
                 layer_collection.hide_viewport = False
         while(object.parent):
             object = object.parent
-            print(f"object {object} is {'visible' if not object.hide_viewport else 'invisible'}")
+            # print(f"object {object} is {'visible' if not object.hide_viewport else 'invisible'}")
             if(object.hide_viewport):
                 exclude.append(object)
                 object.hide_viewport = False
             for collection in object.users_collection:
                 if collection in exclude:
                     continue
-                print(f"collection {collection} is {'visible' if not collection.hide_viewport else 'invisible'}")
+                # print(f"collection {collection} is {'visible' if not collection.hide_viewport else 'invisible'}")
                 if(collection.hide_viewport):
                     exclude.append(collection)
                     collection.hide_viewport = False
