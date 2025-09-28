@@ -169,7 +169,7 @@ def unsubdiv(iterations: int, target:bpy.types.SceneObjects = None, inplace = Tr
         changed.add(obj)
     return changed
 
-def planar_decimate(angle_limit = math.radians(10.), target = None, inplace=True, name_override:str = None):
+def planar_decimate(angle_limit = math.radians(10.), target = None, inplace=True, name_override:str = None, delimit = {"SEAM"}):
     target = target if target is not None else get_selected()
     fx_name = f"planar_{int(angle_limit/math.pi*180)}" if name_override is None else name_override
     if(not inplace):
@@ -182,6 +182,7 @@ def planar_decimate(angle_limit = math.radians(10.), target = None, inplace=True
             continue
         modifier:bpy.types.DecimateModifier = obj.modifiers.new(name=fx_name,type="DECIMATE")
         modifier.angle_limit = angle_limit
+        modifier.delimit = delimit
         modifier.decimate_type = "DISSOLVE" # planar
         bpy.context.view_layer.objects.active=obj
         bpy.ops.object.modifier_apply(modifier=fx_name)
