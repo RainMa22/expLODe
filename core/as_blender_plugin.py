@@ -1,6 +1,6 @@
 import bpy
 from bpy_extras.io_utils import ExportHelper
-from bpy.props import CollectionProperty,StringProperty, BoolProperty, EnumProperty, IntProperty, FloatProperty
+from bpy.props import CollectionProperty,StringProperty, PointerProperty, BoolProperty, EnumProperty, IntProperty, FloatProperty
 from bpy.types import Operator 
 import math
 
@@ -10,14 +10,14 @@ from .features import *
 class EXPLODE_PROP_LODconfig(bpy.types.PropertyGroup):
 
     def update_name(self, context):
-        names = list(map(lambda key: context.scene.explode_LODs[key].name, context.scene.explode_LODs.keys()))
+        names = list(map(lambda key: context.scene.explode_props.LODs[key].name, context.scene.explode_props.LODs.keys()))
         # print(f"{names=}")
         while len(set(names)) != len(names):
             if self.name[-1] in "0123456789":
                 self.name = f"{self.name[:-1]}{int(self.name[-1]) + 1}"
             else:
                 self.name += "1"
-            names = list(map(lambda key: context.scene.explode_LODs[key].name, context.scene.explode_LODs.keys()))
+            names = list(map(lambda key: context.scene.explode_props.LODs[key].name, context.scene.explode_props.LODs.keys()))
 
 
     name: StringProperty(default="LOD1",
@@ -221,18 +221,20 @@ class expLODeExporter(Operator, ExportHelper):
         split.column().prop(self, "secondary_bone_axis", text="")
         layout.separator()
         row = layout.row()
-        icon = 'TRIA_DOWN' if context.scene.expLODe_export_lod_panel_open else 'TRIA_RIGHT'
+        icon = 'TRIA_DOWN' if context.scene.explode_props.export_panel_open else 'TRIA_RIGHT'
         row.label(text="LODs:")
-        row.prop(context.scene, "expLODe_export_lod_panel_open", icon=icon, icon_only=True)
-        if context.scene.expLODe_export_lod_panel_open:
+        row.prop(context.scene.explode_props, "export_panel_open", icon=icon, icon_only=True)
+        if context.scene.explode_props.export_panel_open:
             row = layout.row()
             split = row.split()
-            split.template_list(EXPLODE_UL_loLODConfig.bl_idname,"LOLOD_full",context.scene, "explode_LODs",context.scene,"explode_LODIndex")
+            split.template_list(EXPLODE_UL_loLODConfig.bl_idname,"LOLOD_full",
+                                context.scene.explode_props, "LODs",
+                                context.scene.explode_props,"LODIndex")
             column = row.column()
             column.operator(EXPLODE_OT_add_item.bl_idname,icon="ADD",text="")
             column.operator(EXPLODE_OT_remove_item.bl_idname,icon="REMOVE",text="")
-            LODs:bpy.types.CollectionProperty = context.scene.explode_LODs
-            active_idx=context.scene.explode_LODIndex
+            LODs:bpy.types.CollectionProperty = context.scene.explode_props.LODs
+            active_idx=context.scene.explode_props.LODIndex
             if(len(LODs.items()) == 0):
                 return
             active_lodconf: EXPLODE_PROP_LODconfig = LODs.get(LODs.keys()[active_idx])
@@ -271,12 +273,12 @@ class expLODeExporter(Operator, ExportHelper):
 
         self.additional_transforms(targets)
         
-        LODs:bpy.types.CollectionProperty = context.scene.explode_LODs
+        LODs:bpy.types.CollectionProperty = context.scene.explode_props.LODs
         def apply_lod_config(configname: str):
             config:EXPLODE_PROP_LODconfig = LODs[configname]
             return config.apply_to_objs(targets)
         
-        LODs= list(map(apply_lod_config, context.scene.explode_LODs.keys()))
+        LODs= list(map(apply_lod_config, context.scene.explode_props.LODs.keys()))
         # print(LODs)
         for LOD in LODs:
             targets += LOD
@@ -310,19 +312,14 @@ class expLODeUnityFBXExporter(expLODeExporter):
         super().additional_transforms(targets)
         make_unity_compatible(targets=targets, inplace=True,name_override="")
 
-def menu_func_export(self, context):
-    self.layout.operator(expLODeExporter.bl_idname, text="FBX (with LOD)")
-    self.layout.operator(expLODeUnityFBXExporter.bl_idname, text="FBX (Unity-compatible, with LOD)")
-
-
 class EXPLODE_OT_add_item(bpy.types.Operator):
     bl_idname = "export_scene.explode_add_item"
     bl_label = "Add Item"
 
     def execute(self, context):
-        item:EXPLODE_PROP_LODconfig = context.scene.explode_LODs.add()
+        item:EXPLODE_PROP_LODconfig = context.scene.explode_props.LODs.add()
         item.name = item.name
-        # print(context.scene.explode_LODs.items())
+        # print(context.scene.explode_props.LODs.items())
         return {'FINISHED'}
 
 class EXPLODE_OT_remove_item(bpy.types.Operator):
@@ -330,13 +327,27 @@ class EXPLODE_OT_remove_item(bpy.types.Operator):
     bl_label = "Remove Item"
 
     def execute(self, context):
-        index = context.scene.explode_LODIndex
-        if index >= 0 and index < len(context.scene.explode_LODs):
-            context.scene.explode_LODs[index]
-            context.scene.explode_LODs.remove(index)
-            context.scene.explode_LODIndex = min(index, len(context.scene.explode_LODs) - 1)
+        index = context.scene.explode_props.LODIndex
+        if index >= 0 and index < len(context.scene.explode_props.LODs):
+            context.scene.explode_props.LODs[index]
+            context.scene.explode_props.LODs.remove(index)
+            context.scene.explode_props.LODIndex = min(index, len(context.scene.explode_props.LODs) - 1)
 
         return {'FINISHED'}
+
+class EXPLODE_PROP_sceneprops(bpy.types.PropertyGroup):
+    export_panel_open: BoolProperty(
+        default=False
+    )
+    LODs: CollectionProperty(type=EXPLODE_PROP_LODconfig, 
+                              name="LODs",
+                              description="Additional LOD meshes to generate and export",
+                              )
+    LODIndex: IntProperty()
+
+def menu_func_export(self, context):
+    self.layout.operator(expLODeExporter.bl_idname, text="FBX (with LOD)")
+    self.layout.operator(expLODeUnityFBXExporter.bl_idname, text="FBX (Unity-compatible, with LOD)")
 
 def register():
     bpy.utils.register_class(expLodeFBXExporter)
@@ -345,16 +356,11 @@ def register():
     bpy.utils.register_class(EXPLODE_OT_add_item)
     bpy.utils.register_class(EXPLODE_OT_remove_item)
     bpy.utils.register_class(EXPLODE_PROP_LODconfig)
+    bpy.utils.register_class(EXPLODE_PROP_sceneprops)
+
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
-    bpy.types.Scene.expLODe_export_lod_panel_open = BoolProperty(
-        default=False
-    )
-    bpy.types.Scene.explode_LODs = CollectionProperty(type=EXPLODE_PROP_LODconfig, 
-                              name="LODs",
-                              description="Additional LOD meshes to generate and export",
-                              )
-    
-    bpy.types.Scene.explode_LODIndex = IntProperty()
+
+    bpy.types.Scene.explode_props = PointerProperty(type=EXPLODE_PROP_sceneprops)
 
 
 def unregister():
@@ -364,6 +370,7 @@ def unregister():
     bpy.utils.unregister_class(EXPLODE_OT_add_item)
     bpy.utils.unregister_class(EXPLODE_OT_remove_item)
     bpy.utils.unregister_class(EXPLODE_PROP_LODconfig)
+    bpy.utils.unregister_class(EXPLODE_PROP_sceneprops)
     
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
-    del bpy.types.Scene.expLODe_export_lod_panel_open
+    del bpy.types.scene.explode_props.export_panel_open
