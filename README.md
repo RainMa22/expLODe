@@ -19,4 +19,4 @@
 - [ ] TBD
 
 # LICENSE
-This is a multi-license software, see `LICENSE` and `LICENSE2`, you may choose use either when forking this software.
+See [`License.md`](./LICENSE.md)
