@@ -364,13 +364,14 @@ def register():
 
 
 def unregister():
-    bpy.utils.unregister_class(expLodeFBXExporter)
-    bpy.utils.unregister_class(expLODeUnityFBXExporter)
-    bpy.utils.unregister_class(EXPLODE_UL_loLODConfig)
-    bpy.utils.unregister_class(EXPLODE_OT_add_item)
-    bpy.utils.unregister_class(EXPLODE_OT_remove_item)
-    bpy.utils.unregister_class(EXPLODE_PROP_LODconfig)
+    del bpy.types.Scene.explode_props
+
     bpy.utils.unregister_class(EXPLODE_PROP_sceneprops)
+    bpy.utils.unregister_class(EXPLODE_PROP_LODconfig)
+    bpy.utils.unregister_class(EXPLODE_OT_remove_item)
+    bpy.utils.unregister_class(EXPLODE_OT_add_item)
+    bpy.utils.unregister_class(EXPLODE_UL_loLODConfig)
+    bpy.utils.unregister_class(expLODeUnityFBXExporter)
+    bpy.utils.unregister_class(expLodeFBXExporter)
     
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
-    del bpy.types.scene.explode_props.export_panel_open
