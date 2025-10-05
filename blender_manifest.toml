@@ -3,7 +3,7 @@ schema_version = "1.0.0"
 # Example of manifest file for a Blender extension
 # Change the values according to your extension
 id = "expLODe"
-version = "1.0.0"
+version = "1.0.1"
 name = "expLODe"
 tagline = "LOD automation script using Python and Blender"
 maintainer = "Rainma22"
@@ -28,10 +28,9 @@ license = [
   "SPDX:GPL-3.0-or-later",
 ]
 # # Optional: required by some licenses.
-# copyright = [
-#   "2002-2024 Developer Name",
-#   "1998 Company Name",
-# ]
+copyright = [
+  "2020 Angel García \"Edy\"",
+]
 
 # # Optional: list of supported platforms. If omitted, the extension will be available in all operating systems.
 # platforms = ["windows-x64", "macos-arm64", "linux-x64"]
@@ -88,4 +87,5 @@ paths_exclude_pattern = [
   "globals.py",
   "**.wf",
   "persistence/*",
+  "script.py",
 ]
