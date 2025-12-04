@@ -3,7 +3,7 @@ schema_version = "1.0.0"
 # Example of manifest file for a Blender extension
 # Change the values according to your extension
 id = "expLODe"
-version = "1.0.1"
+version = "1.0.2"
 name = "expLODe"
 tagline = "LOD automation script using Python and Blender"
 maintainer = "Rainma22"

@@ -79,7 +79,7 @@ def importFBX(filepath):
 def exportFBX(filepath, targets=None, 
               global_scale : float = 1, 
               apply_unit_scale: bool = True,
-              apply_scale_options: Literal["FBX_SCALE_NONE", 'FBX_SCALE_UNITS', 'FBX_SCALE_CUSTOM', 'FBX_SCALE_ALL'] = "FBX_SCALE_ALL",
+              apply_scale_options: Literal["FBX_SCALE_NONE", 'FBX_SCALE_UNITS', 'FBX_SCALE_CUSTOM', 'FBX_SCALE_ALL'] = "FBX_SCALE_UNITS",
               use_space_transform: bool = True,
               bake_space_transform: bool = False,
               object_types: set[Literal['EMPTY', 'CAMERA', 'LIGHT', 'ARMATURE', 'MESH', 'OTHER']] = {"EMPTY", "CAMERA", "LIGHT", "ARMATURE", "MESH", "OTHER"},

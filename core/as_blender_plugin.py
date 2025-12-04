@@ -255,14 +255,11 @@ class expLODeExporter(Operator, ExportHelper):
         for target in targets:
             unhid = unhide(target, unhide_parent=True, exclude=unhid)
             visibled = make_visible(target,make_visible_parent=True, exclude=visibled)
-        # print(f"unhid: {unhid}")
-        # print(f"visibled: {visibled}")
         if(self.active_collection):
             active_collection = context.view_layer.active_layer_collection.collection
             targets = [obj for obj in targets if obj in list(active_collection.objects)]
         if(self.selected_objects):
             targets = [obj for obj in targets if obj in context.selected_objects]
-        # print(targets)
 
         for target in targets:
             context.view_layer.objects.active = target
@@ -279,13 +276,9 @@ class expLODeExporter(Operator, ExportHelper):
             return config.apply_to_objs(targets)
         
         LODs= list(map(apply_lod_config, context.scene.explode_props.LODs.keys()))
-        # print(LODs)
         for LOD in LODs:
             targets += LOD
         
-        # for(config: LODConfig in context.scene.explod_LODs):
-
-        # print(self.filepath)
         exportFBX(self.filepath,targets, 
                   use_armature_deform_only=self.deform_bones,
                   add_leaf_bones=self.leaf_bones,
