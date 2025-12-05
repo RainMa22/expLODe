@@ -266,6 +266,8 @@ class expLODeExporter(Operator, ExportHelper):
             for constraint in target.constraints:
                 bpy.ops.constraint.apply(constraint=constraint.name)
             for modifier in target.modifiers:
+                if type(modifier) == bpy.types.ArmatureModifier:
+                    continue
                 bpy.ops.object.modifier_apply(modifier=modifier.name)
 
         self.additional_transforms(targets)
