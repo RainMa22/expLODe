@@ -72,8 +72,8 @@ def check_version():
     except:
         pass
     print(v_major, v_minor, v_patch, sep=".")
-    if (v_major != 4 or v_minor < 2):
-        print(f"invalid version {v_ver}! Blender >= 4.2, < 5.0.0 expected!")
+    if not (5.0 >= float(f"{v_major}.{v_minor}") >= 4.2 ):
+        print(f"invalid version {v_ver}! Blender >= 4.2, <= 5.0 expected!")
         return False
 
     print("blender version satisfied")

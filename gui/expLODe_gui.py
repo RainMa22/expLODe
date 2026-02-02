@@ -524,7 +524,7 @@ class ExportStep(QStepWidget):
     
     def set_export_to(self, export_to):
         self.export_to = os.path.abspath(export_to)
-        self.file_choose_button.setText(os.path.relpath(self.export_to) + os.path.sep)
+        self.file_choose_button.setText(os.path.abspath(self.export_to) + os.path.sep)
     
     def get_export_to(self):
         return self.export_to
